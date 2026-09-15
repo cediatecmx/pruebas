@@ -1,0 +1,137 @@
+.admin-main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 36px 24px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.admin-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+}
+.admin-card h2 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  margin: 0 0 10px;
+}
+.hint { color: var(--text-muted); font-size: 0.85rem; margin: 0 0 14px; }
+
+.row { display: flex; gap: 10px; }
+.row input {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px;
+  border-radius: var(--radius);
+}
+.row button, .settings-form button {
+  background: var(--accent);
+  color: var(--white);
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-weight: 600;
+}
+
+.status-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.status-item { display: flex; justify-content: space-between; font-size: 0.9rem; }
+.status-item .tag {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.status-item .tag.on { background: rgba(47,111,239,0.12); color: var(--blue); }
+
+.ml-connect { color: var(--accent); font-size: 0.88rem; }
+
+.settings-form { display: flex; flex-direction: column; gap: 16px; }
+.settings-form > label { display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; }
+.settings-form input[type="number"] {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px;
+  border-radius: var(--radius);
+}
+.settings-form fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+.settings-form fieldset legend { color: var(--text-muted); font-size: 0.8rem; padding: 0 6px; }
+.settings-form fieldset label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  gap: 10px;
+}
+.settings-form fieldset input { width: 90px; }
+.checkbox { flex-direction: row !important; align-items: center; gap: 8px !important; }
+.msg { font-size: 0.85rem; color: var(--accent); }
+
+.orders-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.orders-table th, .orders-table td {
+  text-align: left;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.orders-table th { color: var(--text-muted); font-weight: 500; }
+
+.orders-list { display: flex; flex-direction: column; gap: 14px; }
+.order-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  font-size: 0.88rem;
+}
+.order-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.order-card__head strong { font-family: var(--font-display); }
+.pay-tag {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+.pay-tag.pagado { background: rgba(47,111,239,0.12); color: var(--blue); }
+.pay-tag.pendiente { background: rgba(139,60,224,0.12); color: var(--purple); }
+.pay-tag.rechazado { background: rgba(220,53,69,0.12); color: #DC3545; }
+
+.order-card__address { color: var(--text-muted); margin-bottom: 8px; }
+.fulfillment-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  gap: 10px;
+}
+.fulfillment-row .status {
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.fulfillment-row .status.ok { background: rgba(47,111,239,0.12); color: var(--blue); }
+.fulfillment-row .status.error { background: rgba(220,53,69,0.12); color: #DC3545; }
+.fulfillment-row .status.manual { background: rgba(139,60,224,0.12); color: var(--purple); }
+.fulfillment-row button {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+}

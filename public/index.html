@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Grupo CEDIA — Ingeniería e Integración Tecnológica</title>
+<link rel="icon" href="/img/logo-cedia.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <a class="brand" href="/">
+      <span class="brand__mark"><img src="/img/logo-cedia.png" alt="Grupo CEDIA" /></span>
+      <span class="brand__text">
+        <strong>Grupo CEDIA</strong>
+        <span>Ingeniería e Integración Tecnológica</span>
+      </span>
+    </a>
+
+    <div class="search">
+      <input id="searchInput" type="text" placeholder="Buscar cámaras, laptops, redes, audio…" />
+      <button id="searchBtn" aria-label="Buscar">Buscar</button>
+    </div>
+
+    <span class="topbar__contact">📞 <a href="tel:+524524047679">452 404 7679</a></span>
+
+    <button class="cart-toggle" id="cartToggle">
+      Carrito <span class="cart-count" id="cartCount">0</span>
+    </button>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero__inner">
+    <h1>El catálogo completo de tus mayoristas,<br>en una sola tienda.</h1>
+    <p>Grupo CEDIA sincroniza productos desde Syscom, CT Internacional y TVC en Línea — listos para vender también en Mercado Libre.</p>
+    <div class="hero__badges">
+      <span>Syscom</span>
+      <span>CT Internacional</span>
+      <span>TVC en Línea</span>
+      <span>Mercado Libre</span>
+    </div>
+  </div>
+</section>
+
+<main class="layout">
+  <aside class="filters">
+    <h2>Filtrar</h2>
+
+    <div class="filter-group">
+      <h3>Proveedor</h3>
+      <label><input type="radio" name="source" value="" checked> Todos</label>
+      <label><input type="radio" name="source" value="syscom"> Syscom</label>
+      <label><input type="radio" name="source" value="ctonline"> CT Internacional</label>
+      <label><input type="radio" name="source" value="tvc"> TVC en Línea</label>
+    </div>
+
+    <div class="filter-group">
+      <h3>Categoría</h3>
+      <div id="categoryList" class="category-list">
+        <label><input type="radio" name="category" value="" checked> Todas</label>
+      </div>
+    </div>
+  </aside>
+
+  <section class="catalog">
+    <div class="catalog__header">
+      <span id="resultsCount">Cargando catálogo…</span>
+    </div>
+    <div id="productGrid" class="product-grid"></div>
+  </section>
+</main>
+
+<aside id="cartDrawer" class="cart-drawer">
+  <div class="cart-drawer__head">
+    <h2>Tu pedido</h2>
+    <button id="closeCart" aria-label="Cerrar">×</button>
+  </div>
+  <div id="cartItems" class="cart-items"></div>
+  <div class="cart-total">
+    <span>Total</span>
+    <strong id="cartTotal">$0.00</strong>
+  </div>
+
+  <form id="checkoutForm" class="checkout-form">
+    <h3>Tus datos</h3>
+    <input type="text" name="name" placeholder="Nombre completo" required />
+    <input type="tel" name="phone" placeholder="WhatsApp (10 dígitos)" required />
+    <input type="email" name="email" placeholder="Correo (opcional)" />
+
+    <h3>Dirección de envío</h3>
+    <p class="hint">Aquí es donde el mayorista enviará el producto directamente.</p>
+    <input type="text" name="calle" placeholder="Calle" required />
+    <input type="text" name="numero" placeholder="Número" required />
+    <input type="text" name="colonia" placeholder="Colonia" required />
+    <input type="text" name="ciudad" placeholder="Ciudad" required />
+    <input type="text" name="estado" placeholder="Estado" required />
+    <input type="text" name="cp" placeholder="Código postal" required />
+    <div class="fiscal-info">
+      Facturado por <strong>Grupo CEDIA</strong> · RFC: <strong>FEGD020503BWA</strong>
+    </div>
+
+    <textarea name="notes" placeholder="Referencias / notas del pedido (opcional)"></textarea>
+
+    <button type="submit">Pagar con Mercado Pago</button>
+  </form>
+</aside>
+<div id="cartOverlay" class="cart-overlay"></div>
+
+<a class="whatsapp-float" id="whatsappFloat" href="#" target="_blank">
+  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.39 1.26 4.81L2 22l5.44-1.36a9.9 9.9 0 0 0 4.6 1.13h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.51 2 12.04 2zm0 18.02h-.01a8.1 8.1 0 0 1-4.13-1.13l-.3-.18-3.07.77.82-3-.19-.31a8.1 8.1 0 0 1-1.24-4.26c0-4.49 3.65-8.14 8.14-8.14 4.49 0 8.14 3.65 8.14 8.14 0 4.49-3.65 8.11-8.16 8.11zm4.46-6.08c-.24-.12-1.43-.7-1.65-.79-.22-.08-.38-.12-.55.12-.16.24-.63.79-.77.95-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.2-.72-.64-1.2-1.43-1.34-1.67-.14-.24-.02-.37.11-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.55-1.33-.76-1.82-.2-.48-.4-.42-.55-.42-.14 0-.3-.02-.46-.02s-.42.06-.64.3c-.22.24-.85.83-.85 2.03 0 1.2.87 2.36.99 2.52.12.16 1.71 2.61 4.14 3.66.58.25 1.03.4 1.38.51.58.18 1.11.16 1.53.1.47-.07 1.43-.58 1.63-1.15.2-.56.2-1.04.14-1.15-.06-.1-.22-.16-.46-.28z"/></svg>
+  Escríbenos por WhatsApp
+</a>
+
+<footer class="site-footer">
+  <p>Grupo CEDIA — Ingeniería e Integración Tecnológica · Tel. 452 404 7679 · catálogo agregado con fines de demostración.</p>
+  <a href="/admin.html">Panel de administración</a>
+</footer>
+
+<script src="/js/company-info.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
