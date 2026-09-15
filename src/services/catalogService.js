@@ -5,6 +5,23 @@ const pricing = require('./pricingService');
 
 const PROVIDERS = { syscom, ctonline, tvc };
 
+// Producto local de prueba para validar Checkout Pro con importes pequeños.
+// No depende de ningún proveedor externo ni de las reglas de margen.
+const TEST_PRODUCT = {
+  id: 'local-PAGO-5',
+  source: 'local',
+  sku: 'PAGO-5',
+  name: 'Producto de prueba - Pago $5',
+  brand: 'CEDIA',
+  category: 'Pruebas',
+  cost: 5,
+  price: 5,
+  currency: 'MXN',
+  stock: 1000,
+  images: ['https://picsum.photos/seed/cedia-pago-5/600/600'],
+  description: 'Producto temporal para realizar pruebas de pago de Mercado Pago por $5 MXN.'
+};
+
 // Cache muy simple en memoria (5 minutos) para no golpear las APIs de los
 // mayoristas en cada request. Para produccion real usa Redis o una tabla.
 const cache = new Map();
@@ -34,6 +51,7 @@ async function getCatalog({ query, source, category } = {}) {
   const results = await Promise.all(sources.map((s) => fetchFromProvider(s, query)));
 
   let items = await Promise.all(results.flat().map(withFinalPrice));
+  items.unshift({ ...TEST_PRODUCT });
 
   if (category) {
     items = items.filter((p) => (p.category || '').toLowerCase() === category.toLowerCase());
@@ -43,6 +61,7 @@ async function getCatalog({ query, source, category } = {}) {
 }
 
 async function getProductById(id) {
+  if (id === TEST_PRODUCT.id) return { ...TEST_PRODUCT };
   const [source, ...skuParts] = id.split('-');
   const sku = skuParts.join('-');
   const items = await fetchFromProvider(source);
