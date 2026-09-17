@@ -5,7 +5,27 @@ if (!config.database.url) {
   console.warn('[db] DATABASE_URL no configurada. La aplicación necesitará PostgreSQL para Etapa 2.');
 }
 
-const pool = config.database.url ? new Pool({ connectionString: config.database.url, ssl: config.database.ssl ? { rejectUnauthorized: false } : undefined }) : null;
+const pool = config.database.url
+  ? new Pool({
+      connectionString: config.database.url,
+      ssl: config.database.ssl ? { rejectUnauthorized: false } : undefined,
+      // Sin esto, si Railway no puede alcanzar la base de datos (URL mal
+      // vinculada, servicio no linkeado, credenciales viejas, etc.) el
+      // pool espera para siempre y cualquier request que dependa de la
+      // base de datos (como el checkout) se queda "colgado" sin error.
+      connectionTimeoutMillis: 8000, // máximo 8s para conseguir una conexión
+      idleTimeoutMillis: 30000,
+      max: 10,
+    })
+  : null;
+
+// Si la conexión se cae después de establecida (no en el connect inicial),
+// que quede en el log en vez de tumbar el proceso completo de Node.
+if (pool) {
+  pool.on('error', (err) => {
+    console.error('[db] Error inesperado en una conexión inactiva del pool:', err.message);
+  });
+}
 
 async function query(text, params = []) {
   if (!pool) throw new Error('DATABASE_URL no está configurada.');

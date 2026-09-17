@@ -166,11 +166,20 @@ async function submitOrder(e) {
   submitBtn.textContent = 'Redirigiendo a Mercado Pago…';
 
   try {
-    const res = await fetch('/api/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer, shippingAddress, items: state.cart, notes }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s máximo
+
+    let res;
+    try {
+      res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer, shippingAddress, items: state.cart, notes }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     const data = await res.json();
     if (!res.ok) {
@@ -181,6 +190,12 @@ async function submitOrder(e) {
     // El carrito se limpia hasta que el pago sea confirmado por Mercado Pago,
     // asi que aqui solo redirigimos; el webhook del servidor hace el resto.
     window.location.href = data.initPoint;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      alert('El servidor está tardando demasiado en responder. Intenta de nuevo en un momento; si sigue pasando, avísale al administrador del sitio.');
+    } else {
+      alert('No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.');
+    }
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Pagar con Mercado Pago';
