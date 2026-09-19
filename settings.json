@@ -1,0 +1,9 @@
+{
+  "globalMarkupPercent": 25,
+  "markupBySource": {
+    "syscom": null,
+    "ctonline": null,
+    "tvc": null
+  },
+  "roundToNine": true
+}

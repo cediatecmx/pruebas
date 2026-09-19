@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pedido confirmado — Grupo CEDIA</title>
+<link rel="icon" href="/img/logo-cedia.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css" />
+<style>
+  .confirm { max-width: 520px; margin: 60px auto; padding: 0 24px; text-align: center; }
+  .confirm img { width: 72px; margin-bottom: 18px; }
+  .confirm h1 { font-family: var(--font-display); font-size: 1.8rem; margin-bottom: 12px; }
+  .confirm p { color: var(--text-muted); margin-bottom: 20px; }
+  .confirm a { color: var(--blue); font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="confirm">
+    <img src="/img/logo-cedia.png" alt="Grupo CEDIA" />
+    <h1>¡Gracias por tu compra!</h1>
+    <p id="orderMsg">Tu pago fue recibido y ya estamos gestionando el envío directo con el mayorista.</p>
+    <div class="fiscal-info">
+      Facturado por <strong>Grupo CEDIA</strong> · RFC: <strong>FEGD020503BWA</strong><br>
+      ¿Dudas con tu pedido? Escríbenos al <strong>452 404 7679</strong>
+    </div>
+    <p style="margin-top:20px"><a href="/">Volver a la tienda</a></p>
+  </div>
+  <script>
+    localStorage.removeItem('cedia-cart');
+    const params = new URLSearchParams(window.location.search);
+    const pedido = params.get('pedido');
+    if (pedido) {
+      document.getElementById('orderMsg').textContent =
+        `Tu pedido ${pedido} fue pagado y ya estamos gestionando el envío directo con el mayorista.`;
+    }
+  </script>
+</body>
+</html>

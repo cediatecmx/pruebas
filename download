@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+node_modules/
+src/data/orders.json
+src/data/ml-token.json
+npm-debug.log*
+.DS_Store
