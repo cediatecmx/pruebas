@@ -44,127 +44,71 @@ function renderCategoryFilters() {
 
 function renderProducts() {
   const grid = el('#productGrid');
-  const distNote = state.distributor?.authenticated
-    ? ' · viendo precios de distribuidor'
-    : '';
-
-  el('#resultsCount').textContent =
-    `${state.products.length} producto(s) encontrados${distNote}`;
+  const distNote = state.distributor?.authenticated ? ' · viendo precios de distribuidor' : '';
+  el('#resultsCount').textContent = `${state.products.length} producto(s) encontrados${distNote}`;
 
   if (!state.products.length) {
-    grid.innerHTML =
-      '<p style="color:var(--text-muted)">No encontramos productos con ese filtro.</p>';
+    grid.innerHTML = '<p style="color:var(--text-muted)">No encontramos productos con ese filtro.</p>';
     return;
   }
 
   grid.innerHTML = state.products.map((p) => `
-    <div class="product-card">
-
-      <div class="product-card__media" data-id="${p.id}">
-        <img
-          src="${p.images?.[0] || ''}"
-          alt="${p.name}"
-          loading="lazy"
-        />
+    <div class="product-card" data-source="${p.source || ''}">
+      <div class="product-card__media" data-product-id="${p.id}">
+        <img src="${p.images?.[0] || ''}" alt="${p.name || 'Producto'}" loading="lazy" />
       </div>
-
-      <span class="brand-tag">
-        ${p.brand || 'Grupo CEDIA'}
-      </span>
-
-      <h3 data-id="${p.id}">
-        ${p.name}
-      </h3>
-
-      ${
-        p.description
-          ? `<p class="product-card__desc">${p.description}</p>`
-          : ''
-      }
-
+      <span class="brand-tag">${p.brand || 'Grupo CEDIA'}</span>
+      <h3 data-product-id="${p.id}">${p.name || 'Producto'}</h3>
+      ${p.description ? `<p class="product-card__desc">${p.description}</p>` : ''}
       <div class="price-row">
-        <span class="price">${money(p.price)}</span>
-
-        <span class="stock">
-          ${p.stock > 0 ? p.stock + ' disp.' : 'Agotado'}
-        </span>
+        <span class="price">${money(Number(p.price) || 0)}</span>
+        <span class="stock">${p.stock > 0 ? `${p.stock} disp.` : 'Agotado'}</span>
       </div>
-
-      <button
-        ${p.stock > 0 ? '' : 'disabled'}
-        data-cart-id="${p.id}"
-      >
+      <button class="add-cart-btn" ${p.stock > 0 ? '' : 'disabled'} data-id="${p.id}">
         Agregar al carrito
       </button>
-
     </div>
   `).join('');
 
-  function openProduct(id) {
-  const product = state.products.find((p) => p.id === id);
+  grid.querySelectorAll('.add-cart-btn').forEach((btn) => {
+    btn.addEventListener('click', () => addToCart(btn.dataset.id));
+  });
 
+  grid.querySelectorAll('[data-product-id]').forEach((item) => {
+    item.addEventListener('click', () => openProduct(item.dataset.productId));
+  });
+}
+
+function openProduct(id) {
+  const product = state.products.find((p) => p.id === id);
   if (!product) return;
 
   const modal = el('#productModal');
   const content = el('#productModalContent');
+  if (!modal || !content) return;
 
-  const description =
-    product.description?.trim() ||
+  const description = product.description?.trim() ||
     'Consulta con Grupo CEDIA para conocer más información sobre este producto.';
 
   content.innerHTML = `
     <div class="product-detail">
-
       <div class="product-detail__image">
-        <img
-          src="${product.images?.[0] || ''}"
-          alt="${product.name}"
-        />
+        <img src="${product.images?.[0] || ''}" alt="${product.name || 'Producto'}" />
       </div>
-
       <div class="product-detail__info">
-
-        <span class="brand-tag">
-          ${product.brand || 'Grupo CEDIA'}
-        </span>
-
-        <h2>${product.name}</h2>
-
+        <span class="brand-tag">${product.brand || 'Grupo CEDIA'}</span>
+        <h2>${product.name || 'Producto'}</h2>
         <div class="product-detail__description">
           <h4>Descripción</h4>
-
-          <p class="product-detail__desc">
-            ${description}
-          </p>
+          <p class="product-detail__desc">${description}</p>
         </div>
-
         <div class="price-row product-detail__price-row">
-
-          <span class="price">
-            ${money(product.price)}
-          </span>
-
-          <span class="stock">
-            ${
-              product.stock > 0
-                ? `${product.stock} disponibles`
-                : 'Agotado'
-            }
-          </span>
-
+          <span class="price">${money(Number(product.price) || 0)}</span>
+          <span class="stock">${product.stock > 0 ? `${product.stock} disponibles` : 'Agotado'}</span>
         </div>
-
-        <button
-          id="productModalAdd"
-          ${product.stock > 0 ? '' : 'disabled'}
-        >
-          ${
-            product.stock > 0
-              ? 'Agregar al carrito'
-              : 'Producto agotado'
-          }
+        <button id="productModalAdd" ${product.stock > 0 ? '' : 'disabled'}>
+          ${product.stock > 0 ? 'Agregar al carrito' : 'Producto agotado'}
         </button>
-
       </div>
     </div>
   `;
@@ -172,8 +116,7 @@ function renderProducts() {
   modal.classList.add('open');
 
   const addButton = el('#productModalAdd');
-
-  if (product.stock > 0) {
+  if (addButton && product.stock > 0) {
     addButton.addEventListener('click', () => {
       addToCart(product.id);
       closeProduct();
@@ -181,55 +124,9 @@ function renderProducts() {
   }
 }
 
-  el('#productModalClose').addEventListener('click', closeProduct);
-
-el('#productModal').addEventListener('click', (e) => {
-  if (e.target.id === 'productModal') {
-    closeProduct();
-  }
-});
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    closeProduct();
-  }
-});
-
-  
-
 function closeProduct() {
-  el('#productModal').classList.remove('open');
-}
-
-  grid.querySelectorAll('.product-card__media, h3[data-id]').forEach((item) => {
-    item.addEventListener('click', () => {
-      openProduct(item.dataset.id);
-    });
-  });
-
-  grid.querySelectorAll('button[data-cart-id]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      addToCart(btn.dataset.cartId);
-    });
-  });
-}
-
-  grid.innerHTML = state.products.map((p) => `
-    <div class="product-card" data-source="${p.source}">
-      <img src="${p.images?.[0] || ''}" alt="${p.name}" loading="lazy" />
-     <span class="brand-tag">${p.brand || 'Grupo CEDIA'}</span>
-      <h3>${p.name}</h3>
-      <div class="price-row">
-        <span class="price">${money(p.price)}</span>
-        <span class="stock">${p.stock > 0 ? p.stock + ' disp.' : 'agotado'}</span>
-      </div>
-      <button ${p.stock > 0 ? '' : 'disabled'} data-id="${p.id}">Agregar al carrito</button>
-    </div>
-  `).join('');
-
-  grid.querySelectorAll('button[data-id]').forEach((btn) =>
-    btn.addEventListener('click', () => addToCart(btn.dataset.id))
-  );
+  const modal = el('#productModal');
+  if (modal) modal.classList.remove('open');
 }
 
 function addToCart(id) {
@@ -380,6 +277,21 @@ el('#cartToggle').addEventListener('click', openCart);
 el('#closeCart').addEventListener('click', closeCart);
 el('#cartOverlay').addEventListener('click', closeCart);
 el('#checkoutForm').addEventListener('submit', submitOrder);
+
+// ---------- Detalle de producto ----------
+const productModalClose = el('#productModalClose');
+const productModal = el('#productModal');
+
+if (productModalClose) productModalClose.addEventListener('click', closeProduct);
+if (productModal) {
+  productModal.addEventListener('click', (e) => {
+    if (e.target.id === 'productModal') closeProduct();
+  });
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeProduct();
+});
+
 
 el('#whatsappFloat').href = `https://wa.me/${window.COMPANY.phoneWhatsapp}?text=${encodeURIComponent('Hola, tengo una pregunta sobre un producto de Grupo CEDIA.')}`;
 
