@@ -324,8 +324,6 @@ button {
   transform: translateY(-3px);
   box-shadow: 0 10px 24px rgba(11,31,82,0.10);
 }
-.product-card[data-source="ctonline"] { border-left-color: var(--highlight); }
-.product-card[data-source="tvc"] { border-left-color: var(--royal); }
 
 .product-card__media,
 .product-card h3[data-id] {
