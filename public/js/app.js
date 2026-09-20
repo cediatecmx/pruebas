@@ -55,7 +55,7 @@ function renderProducts() {
   grid.innerHTML = state.products.map((p) => `
     <div class="product-card" data-source="${p.source}">
       <img src="${p.images?.[0] || ''}" alt="${p.name}" loading="lazy" />
-      <span class="brand-tag">${p.brand || p.source}</span>
+     <span class="brand-tag">${p.brand || 'Grupo CEDIA'}</span>
       <h3>${p.name}</h3>
       <div class="price-row">
         <span class="price">${money(p.price)}</span>
