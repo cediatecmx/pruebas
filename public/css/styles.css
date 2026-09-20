@@ -147,6 +147,7 @@ button {
 }
 .modal-tab.active { background: var(--royal); color: var(--white); border-color: var(--royal); }
 .modal-form { display: flex; flex-direction: column; gap: 10px; }
+.modal-form[hidden] { display: none; }
 .modal-form h3 { font-family: var(--font-display); margin: 0 0 4px; font-size: 1.1rem; }
 .modal-form input {
   background: var(--surface);
