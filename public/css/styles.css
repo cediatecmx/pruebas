@@ -525,3 +525,50 @@ button {
   .whatsapp-float { padding: 12px; }
   .product-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
 }
+
+/* ---------- Modal de detalle de producto ---------- */
+#productModal .modal { max-width: 720px; }
+.product-detail {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 24px;
+}
+.product-detail img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.product-detail__info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.product-detail__info h2 {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  margin: 0;
+  line-height: 1.25;
+}
+.product-detail__desc {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+}
+.product-detail__info .price-row { margin: 6px 0; }
+.product-detail__info button {
+  background: var(--royal);
+  color: var(--white);
+  font-weight: 700;
+  padding: 12px;
+  border-radius: var(--radius);
+  align-self: flex-start;
+  min-width: 200px;
+}
+.product-detail__info button:hover { background: var(--royal-soft); }
+
+@media (max-width: 640px) {
+  .product-detail { grid-template-columns: 1fr; }
+}
