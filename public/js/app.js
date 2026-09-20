@@ -213,12 +213,7 @@ el('#searchInput').addEventListener('keydown', (e) => {
     loadProducts();
   }
 });
-document.querySelectorAll('input[name="source"]').forEach((input) =>
-  input.addEventListener('change', (e) => {
-    state.source = e.target.value;
-    loadProducts();
-  })
-);
+
 el('#cartToggle').addEventListener('click', openCart);
 el('#closeCart').addEventListener('click', closeCart);
 el('#cartOverlay').addEventListener('click', closeCart);
