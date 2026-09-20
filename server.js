@@ -4,6 +4,7 @@ const config = require('./src/config');
 const apiRoutes = require('./src/routes/api');
 const mlRoutes = require('./src/routes/mercadolibre');
 const paymentsRoutes = require('./src/routes/payments');
+const distributorRoutes = require('./src/routes/distributor');
 const db = require('./src/data/db');
 
 const app = express();
@@ -27,6 +28,7 @@ app.use((req, res, next) => {
 app.use('/api', apiRoutes);
 app.use('/api/mercadolibre', mlRoutes);
 app.use('/api', paymentsRoutes);
+app.use('/api/distributor', distributorRoutes);
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
 app.use((err, req, res, next) => {

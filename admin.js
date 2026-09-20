@@ -20,7 +20,7 @@ el('#loginForm').addEventListener('submit', async (e) => {
   if (!res.ok) { el('#loginMsg').textContent = data.error || 'No se pudo iniciar sesión.'; return; }
   el('#adminPassword').value = '';
   el('#loginMsg').textContent = '';
-  showAdmin(); loadStatus(); loadSettings(); loadOrders();
+  showAdmin(); loadStatus(); loadSettings(); loadOrders(); loadDistributors('pending');
 });
 
 el('#logoutBtn').addEventListener('click', async () => { await api('/api/admin/logout', { method: 'POST' }); showLogin(); });
@@ -35,12 +35,12 @@ async function loadStatus() {
 async function loadSettings() {
   const res = await api('/api/admin/settings'); if (!res.ok) return;
   const s = await res.json(); const form = el('#settingsForm');
-  form.globalMarkupPercent.value = s.globalMarkupPercent; form.syscom.value = s.markupBySource.syscom ?? ''; form.ctonline.value = s.markupBySource.ctonline ?? ''; form.tvc.value = s.markupBySource.tvc ?? ''; form.roundToNine.checked = !!s.roundToNine;
+  form.globalMarkupPercent.value = s.globalMarkupPercent; form.syscom.value = s.markupBySource.syscom ?? ''; form.ctonline.value = s.markupBySource.ctonline ?? ''; form.tvc.value = s.markupBySource.tvc ?? ''; form.roundToNine.checked = !!s.roundToNine; form.distributorMarkupPercent.value = s.distributorMarkupPercent ?? '';
 }
 
 el('#settingsForm').addEventListener('submit', async (e) => {
   e.preventDefault(); const form = e.target;
-  const payload = { globalMarkupPercent: Number(form.globalMarkupPercent.value), markupBySource: { syscom: form.syscom.value === '' ? null : Number(form.syscom.value), ctonline: form.ctonline.value === '' ? null : Number(form.ctonline.value), tvc: form.tvc.value === '' ? null : Number(form.tvc.value) }, roundToNine: form.roundToNine.checked };
+  const payload = { globalMarkupPercent: Number(form.globalMarkupPercent.value), markupBySource: { syscom: form.syscom.value === '' ? null : Number(form.syscom.value), ctonline: form.ctonline.value === '' ? null : Number(form.ctonline.value), tvc: form.tvc.value === '' ? null : Number(form.tvc.value) }, distributorMarkupPercent: form.distributorMarkupPercent.value === '' ? null : Number(form.distributorMarkupPercent.value), roundToNine: form.roundToNine.checked };
   const res = await api('/api/admin/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
   const data = await res.json().catch(() => ({})); el('#settingsMsg').textContent = res.ok ? 'Guardado correctamente.' : (data.error || 'No se pudo guardar.');
 });
@@ -58,4 +58,67 @@ async function loadOrders() {
   container.querySelectorAll('button[data-action="mark-manual"]').forEach((btn) => btn.addEventListener('click', async () => { const supplierOrderId = prompt('Número de pedido / folio que te dio el mayorista (opcional):') || ''; await api(`/api/admin/orders/${encodeURIComponent(btn.dataset.order)}/mark-manual`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source: btn.dataset.source, supplierOrderId }) }); loadOrders(); }));
 }
 
-api('/api/admin/session').then((res) => { if (res.ok) { showAdmin(); loadStatus(); loadSettings(); loadOrders(); } else showLogin(); });
+api('/api/admin/session').then((res) => { if (res.ok) { showAdmin(); loadStatus(); loadSettings(); loadOrders(); loadDistributors('pending'); } else showLogin(); });
+
+// ---------- Solicitudes de distribuidor ----------
+const distStatusLabels = { pending: 'Pendiente', approved: 'Aprobado', rejected: 'Rechazado' };
+let currentDistFilter = 'pending';
+
+el('#distFilterPending').addEventListener('click', () => { setDistFilter('pending'); });
+el('#distFilterAll').addEventListener('click', () => { setDistFilter(''); });
+
+function setDistFilter(status) {
+  currentDistFilter = status;
+  el('#distFilterPending').classList.toggle('active', status === 'pending');
+  el('#distFilterAll').classList.toggle('active', status === '');
+  loadDistributors(status);
+}
+
+async function loadDistributors(status) {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+  const res = await api(`/api/admin/distributors${qs}`);
+  if (!res.ok) return;
+  const list = await res.json();
+  const container = el('#distributorsList');
+
+  if (!list.length) {
+    container.innerHTML = status === 'pending' ? 'No hay solicitudes pendientes.' : 'Sin distribuidores todavía.';
+    return;
+  }
+
+  container.innerHTML = list.map((d) => `
+    <div class="dist-card">
+      <div class="dist-card__head">
+        <div>
+          <strong>${esc(d.businessName)}</strong><br>
+          <span style="color:var(--text-muted)">${esc(d.contactName)}</span>
+        </div>
+        <span class="dist-status ${esc(d.status)}">${esc(distStatusLabels[d.status] || d.status)}</span>
+      </div>
+      <div class="dist-card__meta">
+        ${esc(d.email)} · ${esc(d.phone)}${d.rfc ? ` · RFC: ${esc(d.rfc)}` : ''}<br>
+        Solicitado: ${new Date(d.createdAt).toLocaleString('es-MX')}
+      </div>
+      ${d.status === 'pending' ? `
+        <div class="dist-card__actions">
+          <button class="approve-btn" data-action="approve" data-id="${esc(d.id)}">Aprobar</button>
+          <button class="reject-btn" data-action="reject" data-id="${esc(d.id)}">Rechazar</button>
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+
+  container.querySelectorAll('button[data-action="approve"]').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      await api(`/api/admin/distributors/${encodeURIComponent(btn.dataset.id)}/approve`, { method: 'POST' });
+      loadDistributors(currentDistFilter);
+    })
+  );
+  container.querySelectorAll('button[data-action="reject"]').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      if (!confirm('¿Rechazar esta solicitud de distribuidor?')) return;
+      await api(`/api/admin/distributors/${encodeURIComponent(btn.dataset.id)}/reject`, { method: 'POST' });
+      loadDistributors(currentDistFilter);
+    })
+  );
+}

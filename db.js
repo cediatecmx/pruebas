@@ -63,6 +63,20 @@ async function init() {
       expires_at BIGINT,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS distributors (
+      id TEXT PRIMARY KEY,
+      business_name TEXT NOT NULL,
+      contact_name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      phone TEXT NOT NULL,
+      rfc TEXT,
+      password_hash TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      reviewed_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS distributors_email_idx ON distributors(email);
+    CREATE INDEX IF NOT EXISTS distributors_status_idx ON distributors(status);
   `);
   console.log('[db] PostgreSQL listo.');
 }

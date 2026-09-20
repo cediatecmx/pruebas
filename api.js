@@ -3,8 +3,10 @@ const config = require('../config');
 const catalogService = require('../services/catalogService');
 const pricingService = require('../services/pricingService');
 const ordersStore = require('../data/ordersStore');
+const distributorsStore = require('../data/distributorsStore');
 const fulfillmentService = require('../services/fulfillmentService');
 const auth = require('../security/auth');
+const { attachDistributorFlag } = require('./distributor');
 
 const router = express.Router();
 const loginAttempts = new Map();
@@ -18,6 +20,19 @@ function rateLimitLogin(req, res, next) {
   entry.count += 1;
   loginAttempts.set(key, entry);
   next();
+}
+
+function rateLimit(map, max) {
+  return (req, res, next) => {
+    const key = req.ip || 'unknown';
+    const now = Date.now();
+    const entry = map.get(key) || { count: 0, resetAt: now + 15 * 60 * 1000 };
+    if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + 15 * 60 * 1000; }
+    if (entry.count >= max) return res.status(429).json({ error: 'Demasiados intentos. Espera 15 minutos.' });
+    entry.count += 1;
+    map.set(key, entry);
+    next();
+  };
 }
 
 router.post('/admin/login', rateLimitLogin, (req, res) => {
@@ -40,17 +55,17 @@ router.post('/admin/logout', auth.requireAdmin, auth.requireSameOrigin, (req, re
 
 router.get('/admin/session', auth.requireAdmin, (req, res) => res.json({ authenticated: true }));
 
-router.get('/products', async (req, res, next) => {
+router.get('/products', attachDistributorFlag, async (req, res, next) => {
   try {
     const { q, source, category } = req.query;
-    const products = await catalogService.getCatalog({ query: q, source, category });
-    res.json({ count: products.length, products });
+    const products = await catalogService.getCatalog({ query: q, source, category, isDistributor: req.isDistributor });
+    res.json({ count: products.length, products, isDistributor: req.isDistributor });
   } catch (err) { next(err); }
 });
 
-router.get('/products/:id', async (req, res, next) => {
+router.get('/products/:id', attachDistributorFlag, async (req, res, next) => {
   try {
-    const product = await catalogService.getProductById(req.params.id);
+    const product = await catalogService.getProductById(req.params.id, req.isDistributor);
     if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
     res.json(product);
   } catch (err) { next(err); }
@@ -80,7 +95,14 @@ router.put('/admin/settings', auth.requireAdmin, auth.requireSameOrigin, async (
       return res.status(400).json({ error: `Margen inválido para ${source}.` });
     }
   }
-  const updated = await pricingService.saveSettings({ globalMarkupPercent: global, markupBySource, roundToNine: !!body.roundToNine });
+  let distributorMarkupPercent = null;
+  if (body.distributorMarkupPercent !== null && body.distributorMarkupPercent !== '' && body.distributorMarkupPercent !== undefined) {
+    distributorMarkupPercent = Number(body.distributorMarkupPercent);
+    if (!Number.isFinite(distributorMarkupPercent) || distributorMarkupPercent < 0 || distributorMarkupPercent > 200) {
+      return res.status(400).json({ error: 'Margen de distribuidor inválido (0 a 200).' });
+    }
+  }
+  const updated = await pricingService.saveSettings({ globalMarkupPercent: global, markupBySource, distributorMarkupPercent, roundToNine: !!body.roundToNine });
   catalogService.clearCache();
   res.json(updated);
   } catch (err) { next(err); }
@@ -101,6 +123,57 @@ router.post('/admin/orders/:id/mark-manual', auth.requireAdmin, auth.requireSame
   if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
   const fulfillment = (order.fulfillment || []).map((f) => f.source === source ? { ...f, status: 'manual_ok', supplierOrderId: String(supplierOrderId || '').slice(0, 100) } : f);
   res.json(await ordersStore.update(order.id, { fulfillment }));
+  } catch (err) { next(err); }
+});
+
+// ---------- Admin: solicitudes de distribuidor ----------
+router.get('/admin/distributors', auth.requireAdmin, async (req, res, next) => {
+  try {
+    const { status } = req.query;
+    const list = await distributorsStore.listByStatus(status);
+    res.json(list.map(distributorsStore.toPublic));
+  } catch (err) { next(err); }
+});
+
+router.post('/admin/distributors/:id/approve', auth.requireAdmin, auth.requireSameOrigin, async (req, res, next) => {
+  try {
+    const updated = await distributorsStore.setStatus(req.params.id, 'approved');
+    if (!updated) return res.status(404).json({ error: 'Distribuidor no encontrado' });
+    res.json(distributorsStore.toPublic(updated));
+  } catch (err) { next(err); }
+});
+
+router.post('/admin/distributors/:id/reject', auth.requireAdmin, auth.requireSameOrigin, async (req, res, next) => {
+  try {
+    const updated = await distributorsStore.setStatus(req.params.id, 'rejected');
+    if (!updated) return res.status(404).json({ error: 'Distribuidor no encontrado' });
+    res.json(distributorsStore.toPublic(updated));
+  } catch (err) { next(err); }
+});
+
+// ---------- Rastreo público de pedidos (sin necesidad de cuenta) ----------
+// Por seguridad pedimos folio + teléfono juntos, para que no cualquiera
+// pueda adivinar folios y ver pedidos ajenos.
+const lookupAttempts = new Map();
+router.post('/orders/lookup', rateLimit(lookupAttempts, 15), async (req, res, next) => {
+  try {
+    const { orderId, phone } = req.body || {};
+    if (!orderId || !phone) return res.status(400).json({ error: 'Ingresa el folio y el teléfono del pedido.' });
+
+    const order = await ordersStore.findById(String(orderId).trim());
+    const phoneMatches = order && String(order.customer?.phone || '').replace(/\D/g, '') === String(phone).replace(/\D/g, '');
+    if (!order || !phoneMatches) {
+      return res.status(404).json({ error: 'No encontramos ningún pedido con ese folio y teléfono.' });
+    }
+
+    res.json({
+      id: order.id,
+      createdAt: order.createdAt,
+      paymentStatus: order.paymentStatus,
+      total: order.total,
+      items: (order.items || []).map((it) => ({ name: it.name, qty: it.qty })),
+      fulfillment: (order.fulfillment || []).map((f) => ({ source: f.source, status: f.status, supplierOrderId: f.supplierOrderId })),
+    });
   } catch (err) { next(err); }
 });
 
