@@ -44,7 +44,8 @@ function renderCategoryFilters() {
 
 function renderProducts() {
   const grid = el('#productGrid');
-  el('#resultsCount').textContent = `${state.products.length} producto(s) encontrados`;
+  const distNote = state.distributor?.authenticated ? ' · viendo precios de distribuidor' : '';
+  el('#resultsCount').textContent = `${state.products.length} producto(s) encontrados${distNote}`;
 
   if (!state.products.length) {
     grid.innerHTML = '<p style="color:var(--text-muted)">No encontramos productos con ese filtro.</p>';
@@ -225,5 +226,157 @@ el('#checkoutForm').addEventListener('submit', submitOrder);
 
 el('#whatsappFloat').href = `https://wa.me/${window.COMPANY.phoneWhatsapp}?text=${encodeURIComponent('Hola, tengo una pregunta sobre un producto de Grupo CEDIA.')}`;
 
+// ---------- Sesión de distribuidor ----------
+state.distributor = null;
+
+async function checkDistributorSession() {
+  try {
+    const res = await fetch('/api/distributor/session');
+    if (!res.ok) { state.distributor = null; renderDistToggle(); return; }
+    state.distributor = await res.json();
+  } catch {
+    state.distributor = null;
+  }
+  renderDistToggle();
+}
+
+function renderDistToggle() {
+  const btn = el('#distToggle');
+  if (state.distributor?.authenticated) {
+    btn.textContent = `👤 ${state.distributor.businessName} · Salir`;
+    btn.classList.add('logged-in');
+  } else {
+    btn.textContent = 'Soy distribuidor';
+    btn.classList.remove('logged-in');
+  }
+}
+
+el('#distToggle').addEventListener('click', async () => {
+  if (state.distributor?.authenticated) {
+    await fetch('/api/distributor/logout', { method: 'POST' });
+    state.distributor = null;
+    renderDistToggle();
+    loadProducts(); // recargar con precios públicos
+  } else {
+    openDistModal();
+  }
+});
+
+function openDistModal() {
+  el('#distModal').classList.add('open');
+}
+function closeDistModal() {
+  el('#distModal').classList.remove('open');
+  el('#distLoginMsg').textContent = '';
+  el('#distRegisterMsg').textContent = '';
+}
+el('#distModalClose').addEventListener('click', closeDistModal);
+el('#distModal').addEventListener('click', (e) => { if (e.target.id === 'distModal') closeDistModal(); });
+
+document.querySelectorAll('.modal-tab').forEach((tab) =>
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.modal-tab').forEach((t) => t.classList.remove('active'));
+    tab.classList.add('active');
+    const isLogin = tab.dataset.tab === 'login';
+    el('#distLoginForm').hidden = !isLogin;
+    el('#distRegisterForm').hidden = isLogin;
+  })
+);
+
+el('#distLoginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const msg = el('#distLoginMsg');
+  msg.textContent = '';
+  msg.className = 'modal-msg';
+  const res = await fetch('/api/distributor/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: form.email.value.trim(), password: form.password.value }),
+  });
+  const data = await res.json();
+  if (!res.ok) { msg.textContent = data.error || 'No se pudo iniciar sesión.'; return; }
+  closeDistModal();
+  form.reset();
+  await checkDistributorSession();
+  loadProducts(); // recargar con precios de distribuidor
+});
+
+el('#distRegisterForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const msg = el('#distRegisterMsg');
+  msg.textContent = '';
+  msg.className = 'modal-msg';
+  const payload = {
+    businessName: form.businessName.value.trim(),
+    contactName: form.contactName.value.trim(),
+    email: form.email.value.trim(),
+    phone: form.phone.value.trim(),
+    rfc: form.rfc.value.trim(),
+    password: form.password.value,
+  };
+  const res = await fetch('/api/distributor/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) { msg.textContent = data.error || 'No se pudo enviar la solicitud.'; return; }
+  msg.textContent = data.message;
+  msg.className = 'modal-msg ok';
+  form.reset();
+});
+
+// ---------- Rastreo de pedido sin cuenta ----------
+function openTrackModal() {
+  el('#trackModal').classList.add('open');
+}
+function closeTrackModal() {
+  el('#trackModal').classList.remove('open');
+  el('#trackMsg').textContent = '';
+  el('#trackResult').hidden = true;
+}
+el('#trackOrderLink').addEventListener('click', (e) => { e.preventDefault(); openTrackModal(); });
+el('#trackModalClose').addEventListener('click', closeTrackModal);
+el('#trackModal').addEventListener('click', (e) => { if (e.target.id === 'trackModal') closeTrackModal(); });
+
+const fulfillmentLabels = {
+  automatico_ok: 'Enviado a surtir con el mayorista',
+  automatico_error: 'Hubo un problema, lo estamos revisando',
+  pendiente_manual: 'En proceso de gestión',
+  manual_ok: 'Ya en camino',
+};
+
+el('#trackForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const msg = el('#trackMsg');
+  const resultBox = el('#trackResult');
+  msg.textContent = '';
+  resultBox.hidden = true;
+
+  const res = await fetch('/api/orders/lookup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderId: form.orderId.value.trim(), phone: form.phone.value.trim() }),
+  });
+  const data = await res.json();
+  if (!res.ok) { msg.textContent = data.error || 'No se pudo consultar el pedido.'; return; }
+
+  const statusLabel = data.paymentStatus === 'pagado' ? 'Pagado' : data.paymentStatus === 'rechazado' ? 'Pago rechazado' : 'Pendiente de pago';
+  resultBox.innerHTML = `
+    <span class="track-status ${data.paymentStatus}">${statusLabel}</span>
+    <p><strong>Folio:</strong> ${data.id}</p>
+    <p><strong>Fecha:</strong> ${new Date(data.createdAt).toLocaleString('es-MX')}</p>
+    <p><strong>Total:</strong> ${money(data.total)}</p>
+    <p><strong>Productos:</strong></p>
+    <ul>${data.items.map((it) => `<li>${it.qty}x ${it.name}</li>`).join('')}</ul>
+    ${data.fulfillment.length ? `<p><strong>Estado del envío:</strong></p><ul>${data.fulfillment.map((f) => `<li>${fulfillmentLabels[f.status] || f.status}</li>`).join('')}</ul>` : ''}
+  `;
+  resultBox.hidden = false;
+});
+
+checkDistributorSession();
 renderCart();
 loadProducts();

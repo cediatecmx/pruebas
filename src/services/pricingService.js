@@ -4,6 +4,9 @@ const db = require('../data/db');
 const defaults = () => ({
   globalMarkupPercent: config.defaultMarkupPercent,
   markupBySource: { syscom: null, ctonline: null, tvc: null },
+  // Margen para distribuidores aprobados y logueados. Si es null, usa el
+  // mismo margen público (globalMarkupPercent).
+  distributorMarkupPercent: null,
   roundToNine: true,
 });
 
@@ -23,9 +26,11 @@ async function saveSettings(newSettings) {
   return newSettings;
 }
 
-async function applyMarkup(cost, source) {
+async function applyMarkup(cost, source, isDistributor = false) {
   const settings = await loadSettings();
-  const percent = settings.markupBySource[source] ?? settings.globalMarkupPercent;
+  const percent = isDistributor
+    ? settings.distributorMarkupPercent ?? settings.globalMarkupPercent
+    : settings.markupBySource[source] ?? settings.globalMarkupPercent;
   let price = cost * (1 + percent / 100);
   if (settings.roundToNine) price = Math.floor(price) + 0.9;
   return Math.round(price * 100) / 100;

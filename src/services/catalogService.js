@@ -42,15 +42,15 @@ async function fetchFromProvider(name, query) {
   }
 }
 
-async function withFinalPrice(product) {
-  return { id: `${product.source}-${product.sku}`, ...product, price: await pricing.applyMarkup(product.cost, product.source) };
+async function withFinalPrice(product, isDistributor) {
+  return { id: `${product.source}-${product.sku}`, ...product, price: await pricing.applyMarkup(product.cost, product.source, isDistributor) };
 }
 
-async function getCatalog({ query, source, category } = {}) {
+async function getCatalog({ query, source, category, isDistributor = false } = {}) {
   const sources = source ? [source] : Object.keys(PROVIDERS);
   const results = await Promise.all(sources.map((s) => fetchFromProvider(s, query)));
 
-  let items = await Promise.all(results.flat().map(withFinalPrice));
+  let items = await Promise.all(results.flat().map((p) => withFinalPrice(p, isDistributor)));
   items.unshift({ ...TEST_PRODUCT });
 
   if (category) {
@@ -60,13 +60,13 @@ async function getCatalog({ query, source, category } = {}) {
   return items;
 }
 
-async function getProductById(id) {
+async function getProductById(id, isDistributor = false) {
   if (id === TEST_PRODUCT.id) return { ...TEST_PRODUCT };
   const [source, ...skuParts] = id.split('-');
   const sku = skuParts.join('-');
   const items = await fetchFromProvider(source);
   const found = items.find((p) => p.sku === sku);
-  return found ? await withFinalPrice(found) : null;
+  return found ? await withFinalPrice(found, isDistributor) : null;
 }
 
 function clearCache() {

@@ -28,6 +28,8 @@
 
     <span class="topbar__contact">📞 <a href="tel:+524524047679">452 404 7679</a></span>
 
+    <button class="dist-toggle" id="distToggle">Soy distribuidor</button>
+
     <button class="cart-toggle" id="cartToggle">
       Carrito <span class="cart-count" id="cartCount">0</span>
     </button>
@@ -111,14 +113,66 @@
 </aside>
 <div id="cartOverlay" class="cart-overlay"></div>
 
+<!-- ---------- Modal: distribuidor (login / registro) ---------- -->
+<div id="distModal" class="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="distModalClose" aria-label="Cerrar">×</button>
+
+    <div class="modal-tabs">
+      <button class="modal-tab active" data-tab="login">Iniciar sesión</button>
+      <button class="modal-tab" data-tab="register">Registrarme</button>
+    </div>
+
+    <form id="distLoginForm" class="modal-form">
+      <h3>Acceso distribuidor</h3>
+      <input type="email" name="email" placeholder="Correo" required />
+      <input type="password" name="password" placeholder="Contraseña" required />
+      <button type="submit">Entrar</button>
+      <p class="modal-msg" id="distLoginMsg"></p>
+    </form>
+
+    <form id="distRegisterForm" class="modal-form" hidden>
+      <h3>Solicitar cuenta de distribuidor</h3>
+      <p class="hint">Tu solicitud se revisa manualmente. Te avisaremos cuando esté aprobada para que veas precios de mayoreo.</p>
+      <input type="text" name="businessName" placeholder="Nombre de la empresa" required />
+      <input type="text" name="contactName" placeholder="Nombre de contacto" required />
+      <input type="email" name="email" placeholder="Correo" required />
+      <input type="tel" name="phone" placeholder="Teléfono" required />
+      <input type="text" name="rfc" placeholder="RFC (opcional)" />
+      <input type="password" name="password" placeholder="Contraseña (mín. 8 caracteres)" required minlength="8" />
+      <button type="submit">Enviar solicitud</button>
+      <p class="modal-msg" id="distRegisterMsg"></p>
+    </form>
+  </div>
+</div>
+
+<!-- ---------- Modal: rastrear pedido ---------- -->
+<div id="trackModal" class="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="trackModalClose" aria-label="Cerrar">×</button>
+    <form id="trackForm" class="modal-form">
+      <h3>Rastrea tu pedido</h3>
+      <p class="hint">No necesitas cuenta: ingresa el folio de tu pedido y el teléfono que usaste al comprar.</p>
+      <input type="text" name="orderId" placeholder="Folio del pedido (ej. PED-...)" required />
+      <input type="tel" name="phone" placeholder="Teléfono" required />
+      <button type="submit">Buscar pedido</button>
+      <p class="modal-msg" id="trackMsg"></p>
+    </form>
+    <div id="trackResult" class="track-result" hidden></div>
+  </div>
+</div>
+
 <a class="whatsapp-float" id="whatsappFloat" href="#" target="_blank">
   <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.39 1.26 4.81L2 22l5.44-1.36a9.9 9.9 0 0 0 4.6 1.13h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.51 2 12.04 2zm0 18.02h-.01a8.1 8.1 0 0 1-4.13-1.13l-.3-.18-3.07.77.82-3-.19-.31a8.1 8.1 0 0 1-1.24-4.26c0-4.49 3.65-8.14 8.14-8.14 4.49 0 8.14 3.65 8.14 8.14 0 4.49-3.65 8.11-8.16 8.11zm4.46-6.08c-.24-.12-1.43-.7-1.65-.79-.22-.08-.38-.12-.55.12-.16.24-.63.79-.77.95-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.2-.72-.64-1.2-1.43-1.34-1.67-.14-.24-.02-.37.11-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.55-1.33-.76-1.82-.2-.48-.4-.42-.55-.42-.14 0-.3-.02-.46-.02s-.42.06-.64.3c-.22.24-.85.83-.85 2.03 0 1.2.87 2.36.99 2.52.12.16 1.71 2.61 4.14 3.66.58.25 1.03.4 1.38.51.58.18 1.11.16 1.53.1.47-.07 1.43-.58 1.63-1.15.2-.56.2-1.04.14-1.15-.06-.1-.22-.16-.46-.28z"/></svg>
-  Escríbenos por WhatsApp
+  <span>Escríbenos por WhatsApp</span>
 </a>
 
 <footer class="site-footer">
   <p>Grupo CEDIA — Ingeniería e Integración Tecnológica · Tel. 452 404 7679 · catálogo agregado con fines de demostración.</p>
-  <a href="/admin.html">Panel de administración</a>
+  <div class="site-footer__links">
+    <a href="#" id="trackOrderLink">Rastrear mi pedido</a>
+    <a href="/admin.html">Panel de administración</a>
+  </div>
 </footer>
 
 <script src="/js/company-info.js"></script>
