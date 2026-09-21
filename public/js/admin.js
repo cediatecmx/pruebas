@@ -49,11 +49,76 @@ const sourceLabels = { syscom: 'Syscom', ctonline: 'CT Internacional', tvc: 'TVC
 const statusLabels = { automatico_ok: 'Surtido automático ✓', automatico_error: 'Error al surtir', pendiente_manual: 'Pendiente — captúralo a mano', manual_ok: 'Surtido manual ✓' };
 const statusClass = { automatico_ok: 'ok', manual_ok: 'ok', automatico_error: 'error', pendiente_manual: 'manual' };
 
+const paymentLabels = {
+  pendiente: 'Pendiente de pago', pagado: 'Pagado', rechazado: 'Rechazado',
+  reembolsado: 'Reembolsado', cancelado: 'Cancelado', error_checkout: 'Error de checkout'
+};
+const orderLabels = {
+  recibido: 'Pedido recibido', preparando: 'Preparando', enviado: 'Enviado',
+  entregado: 'Entregado', cancelado: 'Cancelado'
+};
+
 async function loadOrders() {
   const res = await api('/api/admin/orders'); if (!res.ok) return;
   const orders = await res.json(); const container = el('#ordersList');
   if (!orders.length) { container.innerHTML = 'Sin pedidos todavía'; return; }
-  container.innerHTML = orders.slice().reverse().map((o) => `<div class="order-card"><div class="order-card__head"><strong>${esc(o.id)}</strong><span class="pay-tag ${esc(o.paymentStatus)}">${esc(o.paymentStatus)}</span></div><div>${esc(o.customer?.name)} · ${esc(o.customer?.phone)} · ${Number(o.total || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</div><div class="order-card__address">${o.shippingAddress ? `${esc(o.shippingAddress.calle)} ${esc(o.shippingAddress.numero)}, ${esc(o.shippingAddress.colonia)}, ${esc(o.shippingAddress.ciudad)}, ${esc(o.shippingAddress.estado)}, CP ${esc(o.shippingAddress.cp)}` : 'Sin dirección'}</div>${(o.fulfillment || []).map((f) => `<div class="fulfillment-row"><span>${esc(sourceLabels[f.source] || f.source)}</span><span class="status ${esc(statusClass[f.status] || '')}">${esc(statusLabels[f.status] || f.status)}</span>${f.status === 'pendiente_manual' ? `<button data-action="mark-manual" data-order="${esc(o.id)}" data-source="${esc(f.source)}">Marcar surtido</button>` : ''}${f.status === 'automatico_error' ? `<button data-action="retry" data-order="${esc(o.id)}">Reintentar</button>` : ''}</div>`).join('')}${o.paymentStatus === 'pagado' && !o.fulfillment?.length ? `<button data-action="retry" data-order="${esc(o.id)}" style="margin-top:8px">Surtir ahora</button>` : ''}</div>`).join('');
+
+  container.innerHTML = orders.map((o) => `
+    <div class="order-card">
+      <div class="order-card__head">
+        <strong>${esc(o.id)}</strong>
+        <div class="order-badges">
+          <span class="pay-tag ${esc(o.paymentStatus)}">Pago: ${esc(paymentLabels[o.paymentStatus] || o.paymentStatus)}</span>
+          <span class="order-tag ${esc(o.orderStatus || 'recibido')}">${esc(orderLabels[o.orderStatus || 'recibido'])}</span>
+        </div>
+      </div>
+      <div>${esc(o.customer?.name)} · ${esc(o.customer?.phone)} · ${Number(o.total || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</div>
+      <div class="order-card__address">${o.shippingAddress ? `${esc(o.shippingAddress.calle)} ${esc(o.shippingAddress.numero)}, ${esc(o.shippingAddress.colonia)}, ${esc(o.shippingAddress.ciudad)}, ${esc(o.shippingAddress.estado)}, CP ${esc(o.shippingAddress.cp)}` : 'Sin dirección'}</div>
+
+      <div class="order-management">
+        <label>Estado del pedido
+          <select data-field="status" data-order="${esc(o.id)}">
+            ${Object.entries(orderLabels).map(([value,label]) => `<option value="${value}" ${value === (o.orderStatus || 'recibido') ? 'selected' : ''}>${label}</option>`).join('')}
+          </select>
+        </label>
+        <label>Paquetería
+          <input data-field="carrier" data-order="${esc(o.id)}" value="${esc(o.carrier || '')}" placeholder="DHL, FedEx, Estafeta…" />
+        </label>
+        <label>Número de guía
+          <input data-field="tracking" data-order="${esc(o.id)}" value="${esc(o.trackingNumber || '')}" placeholder="Número de rastreo" />
+        </label>
+        <div class="order-actions">
+          <button data-action="save-status" data-order="${esc(o.id)}">Guardar seguimiento</button>
+          <button class="secondary" data-action="sync-payment" data-order="${esc(o.id)}">Verificar pago</button>
+        </div>
+        <span class="msg" data-msg="${esc(o.id)}"></span>
+      </div>
+
+      ${(o.fulfillment || []).map((f) => `<div class="fulfillment-row"><span>${esc(sourceLabels[f.source] || f.source)}</span><span class="status ${esc(statusClass[f.status] || '')}">${esc(statusLabels[f.status] || f.status)}</span>${f.status === 'pendiente_manual' ? `<button data-action="mark-manual" data-order="${esc(o.id)}" data-source="${esc(f.source)}">Marcar surtido</button>` : ''}${f.status === 'automatico_error' ? `<button data-action="retry" data-order="${esc(o.id)}">Reintentar</button>` : ''}</div>`).join('')}
+      ${o.paymentStatus === 'pagado' && !o.fulfillment?.length ? `<button data-action="retry" data-order="${esc(o.id)}" style="margin-top:8px">Surtir ahora</button>` : ''}
+    </div>`).join('');
+
+  container.querySelectorAll('button[data-action="save-status"]').forEach((btn) => btn.addEventListener('click', async () => {
+    const id = btn.dataset.order;
+    const orderStatus = container.querySelector(`[data-field="status"][data-order="${CSS.escape(id)}"]`).value;
+    const carrier = container.querySelector(`[data-field="carrier"][data-order="${CSS.escape(id)}"]`).value;
+    const trackingNumber = container.querySelector(`[data-field="tracking"][data-order="${CSS.escape(id)}"]`).value;
+    const msg = container.querySelector(`[data-msg="${CSS.escape(id)}"]`);
+    const r = await api(`/api/admin/orders/${encodeURIComponent(id)}/status`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderStatus, carrier, trackingNumber }) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) { msg.textContent = data.error || 'No se pudo guardar.'; return; }
+    msg.textContent = 'Seguimiento actualizado.'; loadOrders();
+  }));
+
+  container.querySelectorAll('button[data-action="sync-payment"]').forEach((btn) => btn.addEventListener('click', async () => {
+    const id = btn.dataset.order; const msg = container.querySelector(`[data-msg="${CSS.escape(id)}"]`);
+    msg.textContent = 'Consultando Mercado Pago…';
+    const r = await api(`/api/admin/orders/${encodeURIComponent(id)}/sync-payment`, { method: 'POST' });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) { msg.textContent = data.error || 'No se pudo verificar el pago.'; return; }
+    msg.textContent = 'Pago sincronizado.'; loadOrders();
+  }));
+
   container.querySelectorAll('button[data-action="retry"]').forEach((btn) => btn.addEventListener('click', async () => { await api(`/api/admin/orders/${encodeURIComponent(btn.dataset.order)}/fulfill`, { method: 'POST' }); loadOrders(); }));
   container.querySelectorAll('button[data-action="mark-manual"]').forEach((btn) => btn.addEventListener('click', async () => { const supplierOrderId = prompt('Número de pedido / folio que te dio el mayorista (opcional):') || ''; await api(`/api/admin/orders/${encodeURIComponent(btn.dataset.order)}/mark-manual`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source: btn.dataset.source, supplierOrderId }) }); loadOrders(); }));
 }

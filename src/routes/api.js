@@ -5,6 +5,7 @@ const pricingService = require('../services/pricingService');
 const ordersStore = require('../data/ordersStore');
 const distributorsStore = require('../data/distributorsStore');
 const fulfillmentService = require('../services/fulfillmentService');
+const mercadopago = require('../connectors/mercadopago');
 const auth = require('../security/auth');
 const { attachDistributorFlag } = require('./distributor');
 
@@ -110,6 +111,42 @@ router.put('/admin/settings', auth.requireAdmin, auth.requireSameOrigin, async (
 
 router.get('/admin/orders', auth.requireAdmin, async (req, res, next) => { try { res.json(await ordersStore.loadAll()); } catch (err) { next(err); } });
 
+// ---------- Admin: estado logístico y sincronización de pago ----------
+const allowedOrderStatuses = new Set(['recibido', 'preparando', 'enviado', 'entregado', 'cancelado']);
+
+router.put('/admin/orders/:id/status', auth.requireAdmin, auth.requireSameOrigin, async (req, res, next) => {
+  try {
+    const order = await ordersStore.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    const orderStatus = String(req.body?.orderStatus || '').trim();
+    if (!allowedOrderStatuses.has(orderStatus)) return res.status(400).json({ error: 'Estado de pedido inválido.' });
+    const carrier = String(req.body?.carrier || '').trim().slice(0, 100);
+    const trackingNumber = String(req.body?.trackingNumber || '').trim().slice(0, 160);
+    if (orderStatus === 'enviado' && (!carrier || !trackingNumber)) {
+      return res.status(400).json({ error: 'Para marcar como enviado agrega paquetería y número de guía.' });
+    }
+    const patch = { orderStatus, carrier, trackingNumber };
+    if (orderStatus === 'enviado' && !order.shippedAt) patch.shippedAt = new Date().toISOString();
+    if (orderStatus === 'entregado' && !order.deliveredAt) patch.deliveredAt = new Date().toISOString();
+    res.json(await ordersStore.update(order.id, patch));
+  } catch (err) { next(err); }
+});
+
+router.post('/admin/orders/:id/sync-payment', auth.requireAdmin, auth.requireSameOrigin, async (req, res, next) => {
+  try {
+    const order = await ordersStore.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    if (!order.mpPaymentId) return res.status(400).json({ error: 'Este pedido todavía no tiene un ID de pago de Mercado Pago.' });
+    const payment = await mercadopago.getPayment(order.mpPaymentId);
+    const paymentMap = { approved: 'pagado', rejected: 'rechazado', refunded: 'reembolsado', cancelled: 'cancelado', pending: 'pendiente', in_process: 'pendiente' };
+    const paymentStatus = paymentMap[payment.status] || order.paymentStatus;
+    const patch = { paymentStatus, mpPaymentId: String(payment.id || order.mpPaymentId) };
+    if (paymentStatus === 'pagado' && order.orderStatus === 'recibido') patch.orderStatus = 'preparando';
+    res.json(await ordersStore.update(order.id, patch));
+  } catch (err) { next(err); }
+});
+
+
 router.post('/admin/orders/:id/fulfill', auth.requireAdmin, auth.requireSameOrigin, async (req, res) => {
   try { res.json(await fulfillmentService.fulfillOrder(req.params.id)); }
   catch (err) { res.status(500).json({ error: err.message }); }
@@ -170,6 +207,11 @@ router.post('/orders/lookup', rateLimit(lookupAttempts, 15), async (req, res, ne
       id: order.id,
       createdAt: order.createdAt,
       paymentStatus: order.paymentStatus,
+      orderStatus: order.orderStatus || 'recibido',
+      carrier: order.carrier || '',
+      trackingNumber: order.trackingNumber || '',
+      shippedAt: order.shippedAt,
+      deliveredAt: order.deliveredAt,
       total: order.total,
       items: (order.items || []).map((it) => ({ name: it.name, qty: it.qty })),
       fulfillment: (order.fulfillment || []).map((f) => ({ source: f.source, status: f.status, supplierOrderId: f.supplierOrderId })),

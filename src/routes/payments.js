@@ -99,11 +99,22 @@ router.post('/payments/webhook', async (req, res) => {
     const order = await ordersStore.findById(payment.external_reference);
     if (!order) return res.sendStatus(200);
 
+    const paymentMap = {
+      approved: 'pagado',
+      rejected: 'rechazado',
+      refunded: 'reembolsado',
+      cancelled: 'cancelado',
+      pending: 'pendiente',
+      in_process: 'pendiente',
+    };
+    const nextPaymentStatus = paymentMap[payment.status];
+    if (nextPaymentStatus && (order.paymentStatus !== nextPaymentStatus || order.mpPaymentId !== String(paymentId))) {
+      const patch = { paymentStatus: nextPaymentStatus, mpPaymentId: String(paymentId) };
+      if (nextPaymentStatus === 'pagado' && order.orderStatus === 'recibido') patch.orderStatus = 'preparando';
+      await ordersStore.update(order.id, patch);
+    }
     if (payment.status === 'approved' && order.paymentStatus !== 'pagado') {
-      await ordersStore.update(order.id, { paymentStatus: 'pagado', mpPaymentId: String(paymentId) });
       await fulfillmentService.fulfillOrder(order.id);
-    } else if (payment.status === 'rejected' && order.paymentStatus !== 'rechazado') {
-      await ordersStore.update(order.id, { paymentStatus: 'rechazado', mpPaymentId: String(paymentId) });
     }
     res.sendStatus(200);
   } catch (err) {

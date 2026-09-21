@@ -433,15 +433,23 @@ el('#trackForm').addEventListener('submit', async (e) => {
   const data = await res.json();
   if (!res.ok) { msg.textContent = data.error || 'No se pudo consultar el pedido.'; return; }
 
-  const statusLabel = data.paymentStatus === 'pagado' ? 'Pagado' : data.paymentStatus === 'rechazado' ? 'Pago rechazado' : 'Pendiente de pago';
+  const paymentStatusLabels = { pagado: 'Pago confirmado', rechazado: 'Pago rechazado', reembolsado: 'Pago reembolsado', cancelado: 'Pago cancelado', pendiente: 'Pendiente de pago' };
+  const orderStatusLabels = { recibido: 'Pedido recibido', preparando: 'Preparando pedido', enviado: 'Enviado', entregado: 'Entregado', cancelado: 'Cancelado' };
+  const steps = ['recibido', 'preparando', 'enviado', 'entregado'];
+  const currentIndex = steps.indexOf(data.orderStatus || 'recibido');
+  const timeline = data.orderStatus === 'cancelado'
+    ? '<div class="track-cancelled">Pedido cancelado</div>'
+    : `<div class="track-timeline">${steps.map((step, i) => `<div class="track-step ${i < currentIndex ? 'done' : i === currentIndex ? 'current' : ''}"><span>${i < currentIndex ? '✓' : i === currentIndex ? '●' : '○'}</span><small>${orderStatusLabels[step]}</small></div>`).join('')}</div>`;
+
   resultBox.innerHTML = `
-    <span class="track-status ${data.paymentStatus}">${statusLabel}</span>
+    <div class="track-summary"><span class="track-status ${data.paymentStatus}">${paymentStatusLabels[data.paymentStatus] || data.paymentStatus}</span><strong>${orderStatusLabels[data.orderStatus] || data.orderStatus}</strong></div>
+    ${timeline}
     <p><strong>Folio:</strong> ${data.id}</p>
     <p><strong>Fecha:</strong> ${new Date(data.createdAt).toLocaleString('es-MX')}</p>
     <p><strong>Total:</strong> ${money(data.total)}</p>
+    ${data.trackingNumber ? `<div class="tracking-box"><strong>Envío</strong><br>Paquetería: ${data.carrier || '—'}<br>Guía: ${data.trackingNumber}</div>` : ''}
     <p><strong>Productos:</strong></p>
     <ul>${data.items.map((it) => `<li>${it.qty}x ${it.name}</li>`).join('')}</ul>
-    ${data.fulfillment.length ? `<p><strong>Estado del envío:</strong></p><ul>${data.fulfillment.map((f) => `<li>${fulfillmentLabels[f.status] || f.status}</li>`).join('')}</ul>` : ''}
   `;
   resultBox.hidden = false;
 });

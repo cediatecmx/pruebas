@@ -57,6 +57,11 @@ async function init() {
     );
     CREATE INDEX IF NOT EXISTS orders_mp_preference_idx ON orders(mp_preference_id);
     CREATE INDEX IF NOT EXISTS orders_mp_payment_idx ON orders(mp_payment_id);
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_status TEXT NOT NULL DEFAULT 'recibido';
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS carrier TEXT;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number TEXT;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipped_at TIMESTAMPTZ;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ;
     CREATE TABLE IF NOT EXISTS oauth_tokens (
       provider TEXT PRIMARY KEY,
       encrypted_payload TEXT NOT NULL,

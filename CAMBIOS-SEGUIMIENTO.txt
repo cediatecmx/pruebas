@@ -1,0 +1,18 @@
+CAMBIOS — Seguimiento de pedidos CEDIA
+
+Se implementó separación entre:
+1. Estado de pago (Mercado Pago): pendiente, pagado, rechazado, reembolsado, cancelado.
+2. Estado logístico: recibido, preparando, enviado, entregado, cancelado.
+
+Incluye:
+- Webhook actualiza automáticamente el estado financiero.
+- Al aprobarse el pago, el pedido pasa de "recibido" a "preparando".
+- Panel Admin permite cambiar estado logístico.
+- Campos de paquetería y número de guía.
+- Botón "Verificar pago" para sincronizar manualmente con Mercado Pago.
+- Rastreo público muestra línea de progreso y datos de envío.
+- Migración automática de PostgreSQL mediante ALTER TABLE IF NOT EXISTS.
+
+IMPORTANTE:
+- Mantener MP_WEBHOOK_SECRET configurado en Railway.
+- Railway ejecutará db.init() y agregará las nuevas columnas automáticamente al arrancar.

@@ -594,3 +594,17 @@ button {
   .product-detail__price-row .price { font-size: 1.45rem; }
   .product-detail__info button { width: 100%; }
 }
+
+
+/* ---------- Seguimiento de pedidos ---------- */
+.track-summary { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+.track-timeline { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:18px 0 24px; }
+.track-step { position:relative; text-align:center; color:var(--text-muted); font-size:.8rem; }
+.track-step span { display:flex; width:30px; height:30px; margin:0 auto 7px; border:2px solid var(--border); border-radius:50%; align-items:center; justify-content:center; background:var(--surface); position:relative; z-index:1; }
+.track-step:not(:last-child)::after { content:''; position:absolute; top:14px; left:60%; width:80%; height:2px; background:var(--border); }
+.track-step.done span, .track-step.current span { border-color:var(--blue); color:var(--blue); }
+.track-step.done:not(:last-child)::after { background:var(--blue); }
+.track-step.current small, .track-step.done small { color:var(--text); font-weight:600; }
+.tracking-box { padding:12px 14px; margin:14px 0; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-2); }
+.track-cancelled { padding:12px; margin:14px 0; border-radius:var(--radius); background:rgba(220,53,69,.10); color:#DC3545; font-weight:600; }
+@media (max-width:640px) { .track-step small { font-size:.68rem; } .track-timeline { gap:2px; } }
