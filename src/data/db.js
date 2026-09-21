@@ -82,6 +82,22 @@ async function init() {
     );
     CREATE INDEX IF NOT EXISTS distributors_email_idx ON distributors(email);
     CREATE INDEX IF NOT EXISTS distributors_status_idx ON distributors(status);
+    CREATE TABLE IF NOT EXISTS manual_products (
+      id TEXT PRIMARY KEY, sku TEXT NOT NULL UNIQUE, name TEXT NOT NULL, brand TEXT, category TEXT,
+      description TEXT, cost NUMERIC(12,2) NOT NULL DEFAULT 0, public_price NUMERIC(12,2) NOT NULL,
+      distributor_price NUMERIC(12,2), stock INTEGER NOT NULL DEFAULT 0, images JSONB NOT NULL DEFAULT '[]'::jsonb,
+      active BOOLEAN NOT NULL DEFAULT true, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS banners (
+      id TEXT PRIMARY KEY, title TEXT, subtitle TEXT, image_url TEXT NOT NULL, button_text TEXT, link_url TEXT,
+      starts_at TIMESTAMPTZ, ends_at TIMESTAMPTZ, sort_order INTEGER NOT NULL DEFAULT 0, active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS promotions (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, target_type TEXT NOT NULL, target_value TEXT, discount_percent NUMERIC(5,2) NOT NULL,
+      apply_distributor BOOLEAN NOT NULL DEFAULT false, starts_at TIMESTAMPTZ, ends_at TIMESTAMPTZ, active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
   `);
   console.log('[db] PostgreSQL listo.');
 }

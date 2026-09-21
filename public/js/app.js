@@ -12,6 +12,26 @@ function money(n) {
   return n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 }
 
+let promoIndex = 0;
+let promoTimer = null;
+async function loadPromoBanners() {
+  try {
+    const res = await fetch('/api/marketing/banners');
+    if (!res.ok) return;
+    const banners = await res.json();
+    const slider = el('#promoSlider');
+    if (!slider || !banners.length) return;
+    slider.hidden = false;
+    el('#promoSlides').innerHTML = banners.map((b,i)=>`<article class="promo-slide ${i===0?'active':''}"><img src="${b.image}" alt="${b.title||'Promoción Grupo CEDIA'}"><div class="promo-slide__overlay">${b.title?`<h2>${b.title}</h2>`:''}${b.subtitle?`<p>${b.subtitle}</p>`:''}${b.buttonText&&b.link?`<a href="${b.link}">${b.buttonText}</a>`:''}</div></article>`).join('');
+    el('#promoDots').innerHTML=banners.map((_,i)=>`<button class="promo-dot ${i===0?'active':''}" data-slide="${i}" aria-label="Banner ${i+1}"></button>`).join('');
+    const show=(n)=>{const slides=[...document.querySelectorAll('.promo-slide')],dots=[...document.querySelectorAll('.promo-dot')];if(!slides.length)return;promoIndex=(n+slides.length)%slides.length;slides.forEach((x,i)=>x.classList.toggle('active',i===promoIndex));dots.forEach((x,i)=>x.classList.toggle('active',i===promoIndex));};
+    slider.querySelector('.promo-next').onclick=()=>show(promoIndex+1); slider.querySelector('.promo-prev').onclick=()=>show(promoIndex-1);
+    slider.querySelectorAll('.promo-dot').forEach(x=>x.onclick=()=>show(Number(x.dataset.slide)));
+    const start=()=>{clearInterval(promoTimer);if(banners.length>1)promoTimer=setInterval(()=>show(promoIndex+1),6000);}; start();
+    slider.addEventListener('mouseenter',()=>clearInterval(promoTimer)); slider.addEventListener('mouseleave',start);
+  } catch (e) { console.warn('No se pudieron cargar banners:', e.message); }
+}
+
 async function loadProducts() {
   const params = new URLSearchParams();
   if (state.query) params.set('q', state.query);
@@ -61,7 +81,7 @@ function renderProducts() {
       <h3 data-product-id="${p.id}">${p.name || 'Producto'}</h3>
       ${p.description ? `<p class="product-card__desc">${p.description}</p>` : ''}
       <div class="price-row">
-        <span class="price">${money(Number(p.price) || 0)}</span>
+        ${p.promotion ? `<span class="discount-badge">-${p.promotion.discountPercent}%</span><span class="old-price">${money(Number(p.originalPrice)||0)}</span>` : ''}<span class="price">${money(Number(p.price) || 0)}</span>
         <span class="stock">${p.stock > 0 ? `${p.stock} disp.` : 'Agotado'}</span>
       </div>
       <button class="add-cart-btn" ${p.stock > 0 ? '' : 'disabled'} data-id="${p.id}">
@@ -103,7 +123,7 @@ function openProduct(id) {
           <p class="product-detail__desc">${description}</p>
         </div>
         <div class="price-row product-detail__price-row">
-          <span class="price">${money(Number(product.price) || 0)}</span>
+          ${product.promotion ? `<span class="discount-badge">-${product.promotion.discountPercent}%</span><span class="old-price">${money(Number(product.originalPrice)||0)}</span>` : ''}<span class="price">${money(Number(product.price) || 0)}</span>
           <span class="stock">${product.stock > 0 ? `${product.stock} disponibles` : 'Agotado'}</span>
         </div>
         <button id="productModalAdd" ${product.stock > 0 ? '' : 'disabled'}>
@@ -524,4 +544,5 @@ el('#trackForm').addEventListener('submit', async (e) => {
 
 checkDistributorSession();
 renderCart();
+loadPromoBanners();
 loadProducts();

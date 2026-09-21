@@ -1,0 +1,23 @@
+NUEVOS MÓDULOS CEDIA
+
+1) Productos CEDIA
+- Alta, edición, activación/desactivación y eliminación desde Admin.
+- SKU, nombre, marca, categoría, descripción, costo, precio público, precio distribuidor, stock e imágenes por URL.
+- Se guardan en PostgreSQL y aparecen en el catálogo como source=cedia.
+- No dependen de Syscom, CT ni TVC.
+
+2) Banners y publicidad
+- Alta/edición/eliminación desde Admin.
+- Imagen por URL, título, subtítulo, botón, enlace, fechas, orden y estado.
+- Carrusel automático cada 6 segundos en la tienda.
+
+3) Promociones
+- Descuento real calculado en backend.
+- Puede aplicarse a todo, producto (ID/SKU), categoría o marca.
+- Fechas de vigencia, activo/inactivo y opción para distribuidores.
+- Checkout vuelve a calcular el precio en servidor antes de cobrar.
+
+IMPORTANTE
+- No se requieren variables nuevas de Railway.
+- db.init() crea las tablas manual_products, banners y promotions automáticamente.
+- Las imágenes se manejan por URL pública para evitar depender del almacenamiento efímero de Railway.

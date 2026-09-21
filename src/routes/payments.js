@@ -5,6 +5,7 @@ const ordersStore = require('../data/ordersStore');
 const fulfillmentService = require('../services/fulfillmentService');
 const catalogService = require('../services/catalogService');
 const { validateMercadoPagoSignature } = require('../security/webhook');
+const { attachDistributorFlag } = require('./distributor');
 
 const router = express.Router();
 const checkoutRate = new Map();
@@ -31,14 +32,14 @@ function normalizeCheckoutError(err) {
   return { message: String(err?.message || 'Error desconocido').slice(0, 2000) };
 }
 
-async function validateAndPriceItems(items) {
+async function validateAndPriceItems(items, isDistributor = false) {
   if (!Array.isArray(items) || items.length < 1 || items.length > 50) throw new Error('Carrito inválido.');
   const normalized = [];
   for (const item of items) {
     const id = clean(item?.id, 160);
     const qty = Number(item?.qty);
     if (!id || !Number.isInteger(qty) || qty < 1 || qty > 50) throw new Error('Cantidad de producto inválida.');
-    const product = await catalogService.getProductById(id);
+    const product = await catalogService.getProductById(id, isDistributor);
     if (!product) throw new Error(`Producto no disponible: ${id}`);
     if (!Number.isFinite(product.price) || product.price < 0) throw new Error(`Precio inválido para ${id}`);
     if (Number(product.stock) < qty) throw new Error(`No hay inventario suficiente para ${product.name}. Disponible: ${product.stock}.`);
@@ -58,7 +59,7 @@ async function validateAndPriceItems(items) {
   return normalized;
 }
 
-router.post('/checkout', checkoutThrottle, async (req, res) => {
+router.post('/checkout', checkoutThrottle, attachDistributorFlag, async (req, res) => {
   try {
     const { customer, shippingAddress, notes } = req.body || {};
     const safeCustomer = {
@@ -78,7 +79,7 @@ router.post('/checkout', checkoutThrottle, async (req, res) => {
     if (!safeAddress.calle || !safeAddress.cp || !safeAddress.ciudad || !safeAddress.estado) return res.status(400).json({ error: 'Falta información de la dirección de envío.' });
     if (!config.mercadopago.enabled) return res.status(400).json({ error: 'Configura MP_ACCESS_TOKEN en tu .env para poder cobrar.' });
 
-    const safeItems = await validateAndPriceItems(req.body.items);
+    const safeItems = await validateAndPriceItems(req.body.items, req.isDistributor);
     const total = safeItems.reduce((sum, it) => sum + it.price * it.qty, 0);
     const order = await ordersStore.create({ customer: safeCustomer, shippingAddress: safeAddress, items: safeItems, notes: clean(notes, 500), total });
     try {

@@ -4,6 +4,8 @@ const catalogService = require('../services/catalogService');
 const pricingService = require('../services/pricingService');
 const ordersStore = require('../data/ordersStore');
 const distributorsStore = require('../data/distributorsStore');
+const productsStore = require('../data/productsStore');
+const marketingStore = require('../data/marketingStore');
 const fulfillmentService = require('../services/fulfillmentService');
 const mercadopago = require('../connectors/mercadopago');
 const auth = require('../security/auth');
@@ -80,6 +82,33 @@ router.get('/status', (req, res) => {
     mercadolibre: config.mercadolibre.enabled ? 'app configurada' : 'sin configurar',
   });
 });
+
+
+// ---------- Productos manuales CEDIA ----------
+function cleanText(v,max=500){ return String(v ?? '').trim().slice(0,max); }
+function normalizeManualProduct(body){
+  const p=body||{}; const publicPrice=Number(p.publicPrice), cost=Number(p.cost||0), stock=Number(p.stock||0);
+  const distributorPrice=(p.distributorPrice===''||p.distributorPrice==null)?null:Number(p.distributorPrice);
+  if(!cleanText(p.sku,100)||!cleanText(p.name,180)) throw new Error('SKU y nombre son obligatorios.');
+  if(!Number.isFinite(publicPrice)||publicPrice<0||!Number.isFinite(cost)||cost<0||!Number.isInteger(stock)||stock<0) throw new Error('Precio, costo o existencia inválidos.');
+  if(distributorPrice!==null&&(!Number.isFinite(distributorPrice)||distributorPrice<0)) throw new Error('Precio distribuidor inválido.');
+  return {sku:cleanText(p.sku,100),name:cleanText(p.name,180),brand:cleanText(p.brand,100),category:cleanText(p.category,100),description:cleanText(p.description,5000),cost,publicPrice,distributorPrice,stock,images:(Array.isArray(p.images)?p.images:[]).map(x=>cleanText(x,1000)).filter(Boolean).slice(0,8),active:p.active!==false};
+}
+router.get('/admin/products', auth.requireAdmin, async(req,res,next)=>{try{res.json(await productsStore.list());}catch(e){next(e);}});
+router.post('/admin/products', auth.requireAdmin, auth.requireSameOrigin, async(req,res,next)=>{try{const r=await productsStore.create(normalizeManualProduct(req.body));catalogService.clearCache();res.status(201).json(r);}catch(e){if(/obligatorios|inválid/.test(e.message))return res.status(400).json({error:e.message});next(e);}});
+router.put('/admin/products/:id', auth.requireAdmin, auth.requireSameOrigin, async(req,res,next)=>{try{const r=await productsStore.update(req.params.id,normalizeManualProduct(req.body));if(!r)return res.status(404).json({error:'Producto no encontrado.'});catalogService.clearCache();res.json(r);}catch(e){if(/obligatorios|inválid/.test(e.message))return res.status(400).json({error:e.message});next(e);}});
+router.delete('/admin/products/:id', auth.requireAdmin, auth.requireSameOrigin, async(req,res,next)=>{try{await productsStore.remove(req.params.id);catalogService.clearCache();res.json({ok:true});}catch(e){next(e);}});
+
+// ---------- Banners y promociones ----------
+router.get('/marketing/banners', async(req,res,next)=>{try{res.json(await marketingStore.listBanners({publicOnly:true}));}catch(e){next(e);}});
+router.get('/admin/banners', auth.requireAdmin, async(req,res,next)=>{try{res.json(await marketingStore.listBanners());}catch(e){next(e);}});
+router.post('/admin/banners', auth.requireAdmin, auth.requireSameOrigin, async(req,res,next)=>{try{const b=req.body||{};if(!cleanText(b.image,1000))return res.status(400).json({error:'La URL de imagen es obligatoria.'});res.status(201).json(await marketingStore.saveBanner({title:cleanText(b.title,180),subtitle:cleanText(b.subtitle,500),image:cleanText(b.image,1000),buttonText:cleanText(b.buttonText,80),link:cleanText(b.link,1000),startsAt:b.startsAt||null,endsAt:b.endsAt||null,sortOrder:Number(b.sortOrder||0),active:b.active!==false}));}catch(e){next(e);}});
+router.put('/admin/banners/:id', auth.requireAdmin, auth.requireSameOrigin, async(req,res,next)=>{try{const b=req.body||{};res.json(await marketingStore.saveBanner({id:req.params.id,title:cleanText(b.title,180),subtitle:cleanText(b.subtitle,500),image:cleanText(b.image,1000),buttonText:cleanText(b.buttonText,80),link:cleanText(b.link,1000),startsAt:b.startsAt||null,endsAt:b.endsAt||null,sortOrder:Number(b.sortOrder||0),active:b.active!==false}));}catch(e){next(e);}});
+router.delete('/admin/banners/:id', auth.requireAdmin, auth.requireSameOrigin, async(req,res,next)=>{try{await marketingStore.deleteBanner(req.params.id);res.json({ok:true});}catch(e){next(e);}});
+router.get('/admin/promotions', auth.requireAdmin, async(req,res,next)=>{try{res.json(await marketingStore.listPromotions());}catch(e){next(e);}});
+router.post('/admin/promotions', auth.requireAdmin, auth.requireSameOrigin, async(req,res,next)=>{try{const b=req.body||{},d=Number(b.discountPercent);if(!b.name||!Number.isFinite(d)||d<=0||d>=100)return res.status(400).json({error:'Nombre y descuento entre 0 y 100 son obligatorios.'});res.status(201).json(await marketingStore.savePromotion({name:cleanText(b.name,180),targetType:b.targetType||'all',targetValue:cleanText(b.targetValue,180),discountPercent:d,applyDistributor:!!b.applyDistributor,startsAt:b.startsAt||null,endsAt:b.endsAt||null,active:b.active!==false}));}catch(e){next(e);}});
+router.put('/admin/promotions/:id', auth.requireAdmin, auth.requireSameOrigin, async(req,res,next)=>{try{const b=req.body||{},d=Number(b.discountPercent);res.json(await marketingStore.savePromotion({id:req.params.id,name:cleanText(b.name,180),targetType:b.targetType||'all',targetValue:cleanText(b.targetValue,180),discountPercent:d,applyDistributor:!!b.applyDistributor,startsAt:b.startsAt||null,endsAt:b.endsAt||null,active:b.active!==false}));}catch(e){next(e);}});
+router.delete('/admin/promotions/:id', auth.requireAdmin, auth.requireSameOrigin, async(req,res,next)=>{try{await marketingStore.deletePromotion(req.params.id);catalogService.clearCache();res.json({ok:true});}catch(e){next(e);}});
 
 router.get('/admin/settings', auth.requireAdmin, async (req, res, next) => { try { res.json(await pricingService.loadSettings()); } catch (err) { next(err); } });
 

@@ -678,3 +678,21 @@ button {
     height: 65px;
   }
 }
+
+/* Carrusel promocional */
+.promo-slider { position:relative; max-width:1200px; margin:18px auto 0; overflow:hidden; border-radius:16px; background:#0d1b3d; min-height:220px; }
+.promo-slides { position:relative; min-height:220px; }
+.promo-slide { display:none; position:relative; min-height:220px; }
+.promo-slide.active { display:block; }
+.promo-slide img { width:100%; height:clamp(220px,32vw,420px); object-fit:cover; display:block; }
+.promo-slide__overlay { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; padding:clamp(24px,5vw,64px); background:linear-gradient(90deg,rgba(7,16,42,.82),rgba(7,16,42,.15) 70%); color:white; }
+.promo-slide__overlay h2 { font-size:clamp(1.5rem,4vw,3rem); margin:0 0 8px; max-width:700px; }
+.promo-slide__overlay p { max-width:600px; margin:0 0 18px; }
+.promo-slide__overlay a { background:white; color:#14265d; padding:10px 18px; border-radius:8px; text-decoration:none; font-weight:700; }
+.promo-arrow { position:absolute; top:50%; transform:translateY(-50%); z-index:3; width:42px; height:42px; border:0; border-radius:50%; font-size:28px; cursor:pointer; background:rgba(255,255,255,.85); color:#14265d; }
+.promo-prev { left:12px; } .promo-next { right:12px; }
+.promo-dots { position:absolute; z-index:3; bottom:12px; left:0; right:0; display:flex; justify-content:center; gap:7px; }
+.promo-dot { width:9px; height:9px; padding:0; border:0; border-radius:50%; background:rgba(255,255,255,.5); }
+.promo-dot.active { background:white; transform:scale(1.25); }
+.old-price { color:var(--text-muted); text-decoration:line-through; font-size:.8rem; margin-right:6px; }
+.discount-badge { display:inline-block; background:#7a2ee6; color:white; border-radius:999px; padding:3px 8px; font-size:.72rem; font-weight:700; margin-bottom:6px; }
