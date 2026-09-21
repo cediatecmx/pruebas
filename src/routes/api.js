@@ -191,45 +191,86 @@ router.post('/admin/distributors/:id/reject', auth.requireAdmin, auth.requireSam
 // ---------- Rastreo público de pedidos (sin necesidad de cuenta) ----------
 // Por seguridad pedimos folio + teléfono juntos, para que no cualquiera
 // pueda adivinar folios y ver pedidos ajenos.
+
 const lookupAttempts = new Map();
+
 router.post('/orders/lookup', rateLimit(lookupAttempts, 15), async (req, res, next) => {
   try {
     const { orderId, phone } = req.body || {};
-    if (!orderId || !phone) return res.status(400).json({ error: 'Ingresa el folio y el teléfono del pedido.' });
 
-    items: (order.items || []).map((it) => ({
-  id: it.id || '',
-  sku: it.sku || '',
-  name: it.name || 'Producto',
-  description: it.description || '',
-  image: it.image || '',
-  qty: Number(it.qty || 1),
-  price: Number(it.price || 0),
-  subtotal: Number(
-    it.subtotal ??
-    (Number(it.price || 0) * Number(it.qty || 1))
-  )
-})),
-    const order = await ordersStore.findById(String(orderId).trim());
-    const phoneMatches = order && String(order.customer?.phone || '').replace(/\D/g, '') === String(phone).replace(/\D/g, '');
-    if (!order || !phoneMatches) {
-      return res.status(404).json({ error: 'No encontramos ningún pedido con ese folio y teléfono.' });
+    if (!orderId || !phone) {
+      return res.status(400).json({
+        error: 'Ingresa el folio y el teléfono del pedido.'
+      });
     }
 
+    // Buscar el pedido
+    const order = await ordersStore.findById(
+      String(orderId).trim()
+    );
+
+    // Verificar que el teléfono coincida
+    const phoneMatches =
+      order &&
+      String(order.customer?.phone || '').replace(/\D/g, '') ===
+        String(phone).replace(/\D/g, '');
+
+    if (!order || !phoneMatches) {
+      return res.status(404).json({
+        error: 'No encontramos ningún pedido con ese folio y teléfono.'
+      });
+    }
+
+    // Respuesta pública del pedido
     res.json({
       id: order.id,
       createdAt: order.createdAt,
+
+      // Estados
       paymentStatus: order.paymentStatus,
       orderStatus: order.orderStatus || 'recibido',
+
+      // Información de envío
       carrier: order.carrier || '',
       trackingNumber: order.trackingNumber || '',
-      shippedAt: order.shippedAt,
-      deliveredAt: order.deliveredAt,
-      total: order.total,
-      items: (order.items || []).map((it) => ({ name: it.name, qty: it.qty })),
-      fulfillment: (order.fulfillment || []).map((f) => ({ source: f.source, status: f.status, supplierOrderId: f.supplierOrderId })),
+      shippedAt: order.shippedAt || null,
+      deliveredAt: order.deliveredAt || null,
+
+      // Total
+      total: Number(order.total || 0),
+
+      // Productos
+      items: (order.items || []).map((it) => {
+        const qty = Number(it.qty || 1);
+        const price = Number(it.price || 0);
+
+        return {
+          id: it.id || '',
+          sku: it.sku || '',
+          name: it.name || 'Producto',
+          description: it.description || '',
+          image: it.image || '',
+
+          qty,
+          price,
+
+          subtotal: Number(
+            it.subtotal ?? (price * qty)
+          )
+        };
+      }),
+
+      // Información de surtido
+      fulfillment: (order.fulfillment || []).map((f) => ({
+        source: f.source,
+        status: f.status,
+        supplierOrderId: f.supplierOrderId
+      }))
     });
-  } catch (err) { next(err); }
+
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;
