@@ -448,8 +448,76 @@ el('#trackForm').addEventListener('submit', async (e) => {
     <p><strong>Fecha:</strong> ${new Date(data.createdAt).toLocaleString('es-MX')}</p>
     <p><strong>Total:</strong> ${money(data.total)}</p>
     ${data.trackingNumber ? `<div class="tracking-box"><strong>Envío</strong><br>Paquetería: ${data.carrier || '—'}<br>Guía: ${data.trackingNumber}</div>` : ''}
-    <p><strong>Productos:</strong></p>
-    <ul>${data.items.map((it) => `<li>${it.qty}x ${it.name}</li>`).join('')}</ul>
+   <div class="track-products">
+
+  <h4>Productos de tu pedido</h4>
+
+  ${data.items.map((item) => {
+
+    const qty = Number(item.qty || 1);
+    const price = Number(item.price || 0);
+
+    const subtotal = Number(
+      item.subtotal ?? (price * qty)
+    );
+
+    return `
+      <div class="track-product">
+
+        ${
+          item.image
+            ? `
+              <div class="track-product__image">
+                <img
+                  src="${item.image}"
+                  alt="${item.name || 'Producto'}"
+                >
+              </div>
+            `
+            : ''
+        }
+
+        <div class="track-product__info">
+
+          <strong>
+            ${item.name || 'Producto'}
+          </strong>
+
+          ${
+            item.sku
+              ? `<span class="track-product__sku">
+                   Modelo: ${item.sku}
+                 </span>`
+              : ''
+          }
+
+          ${
+            item.description
+              ? `<p class="track-product__description">
+                   ${item.description}
+                 </p>`
+              : ''
+          }
+
+          <div class="track-product__price">
+
+            <span>
+              ${qty} × ${money(price)}
+            </span>
+
+            <strong>
+              ${money(subtotal)}
+            </strong>
+
+          </div>
+
+        </div>
+
+      </div>
+    `;
+  }).join('')}
+
+</div>
   `;
   resultBox.hidden = false;
 });
