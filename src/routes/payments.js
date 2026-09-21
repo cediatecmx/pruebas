@@ -42,7 +42,18 @@ async function validateAndPriceItems(items) {
     if (!product) throw new Error(`Producto no disponible: ${id}`);
     if (!Number.isFinite(product.price) || product.price < 0) throw new Error(`Precio inválido para ${id}`);
     if (Number(product.stock) < qty) throw new Error(`No hay inventario suficiente para ${product.name}. Disponible: ${product.stock}.`);
-    normalized.push({ id: product.id, name: product.name, price: product.price, qty });
+    normalized.push({
+  id: product.id,
+  sku: product.sku || '',
+  name: product.name,
+  description: product.description || '',
+  image: Array.isArray(product.images)
+    ? (product.images[0] || '')
+    : (product.image || ''),
+  price: Number(product.price),
+  qty,
+  subtotal: Number(product.price) * qty
+});
   }
   return normalized;
 }
