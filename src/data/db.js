@@ -98,6 +98,20 @@ async function init() {
       apply_distributor BOOLEAN NOT NULL DEFAULT false, starts_at TIMESTAMPTZ, ends_at TIMESTAMPTZ, active BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS inventory_movements (
+      id BIGSERIAL PRIMARY KEY,
+      product_id TEXT NOT NULL REFERENCES manual_products(id) ON DELETE CASCADE,
+      order_id TEXT,
+      movement_type TEXT NOT NULL,
+      quantity INTEGER NOT NULL,
+      stock_after INTEGER NOT NULL,
+      reason TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS inventory_movements_product_idx ON inventory_movements(product_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS inventory_movements_order_idx ON inventory_movements(order_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS inventory_sale_once_idx ON inventory_movements(order_id, product_id, movement_type)
+      WHERE order_id IS NOT NULL AND movement_type IN ('sale','restock');
   `);
   console.log('[db] PostgreSQL listo.');
 }

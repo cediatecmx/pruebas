@@ -3,6 +3,7 @@ const config = require('../config');
 const mercadopago = require('../connectors/mercadopago');
 const ordersStore = require('../data/ordersStore');
 const fulfillmentService = require('../services/fulfillmentService');
+const inventoryService = require('../services/inventoryService');
 const catalogService = require('../services/catalogService');
 const { validateMercadoPagoSignature } = require('../security/webhook');
 const { attachDistributorFlag } = require('./distributor');
@@ -120,6 +121,17 @@ router.post('/payments/webhook', async (req, res) => {
       in_process: 'pendiente',
     };
     const nextPaymentStatus = paymentMap[payment.status];
+
+    // Inventario CEDIA: la operación es idempotente, así que un webhook repetido
+    // nunca descuenta/restaura dos veces el mismo pedido.
+    if (payment.status === 'approved') {
+      await inventoryService.applyPaidOrder(order);
+      catalogService.clearCache();
+    } else if (payment.status === 'refunded' || payment.status === 'cancelled') {
+      await inventoryService.restoreOrder(order, payment.status === 'refunded' ? 'Reembolso' : 'Cancelación');
+      catalogService.clearCache();
+    }
+
     if (nextPaymentStatus && (order.paymentStatus !== nextPaymentStatus || order.mpPaymentId !== String(paymentId))) {
       const patch = { paymentStatus: nextPaymentStatus, mpPaymentId: String(paymentId) };
       if (nextPaymentStatus === 'pagado' && order.orderStatus === 'recibido') patch.orderStatus = 'preparando';

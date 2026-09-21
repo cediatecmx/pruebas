@@ -23,18 +23,49 @@ async function findById(id) {
 }
 async function create(p) {
   const id = crypto.randomUUID();
-  const { rows } = await db.query(`INSERT INTO manual_products
-    (id,sku,name,brand,category,description,cost,public_price,distributor_price,stock,images,active)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-    [id,p.sku,p.name,p.brand,p.category,p.description,p.cost,p.publicPrice,p.distributorPrice,p.stock,JSON.stringify(p.images||[]),p.active]);
-  return rowToProduct(rows[0]);
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(`INSERT INTO manual_products
+      (id,sku,name,brand,category,description,cost,public_price,distributor_price,stock,images,active)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      [id,p.sku,p.name,p.brand,p.category,p.description,p.cost,p.publicPrice,p.distributorPrice,p.stock,JSON.stringify(p.images||[]),p.active]);
+    if (Number(p.stock) !== 0) {
+      await client.query(`INSERT INTO inventory_movements
+        (product_id,movement_type,quantity,stock_after,reason) VALUES($1,'initial',$2,$3,$4)`,
+        [id, Number(p.stock), Number(p.stock), 'Inventario inicial']);
+    }
+    await client.query('COMMIT');
+    return rowToProduct(rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally { client.release(); }
 }
 async function update(id,p) {
   const internalId = String(id).replace(/^cedia-/, '');
-  const { rows } = await db.query(`UPDATE manual_products SET sku=$2,name=$3,brand=$4,category=$5,description=$6,cost=$7,
-    public_price=$8,distributor_price=$9,stock=$10,images=$11,active=$12,updated_at=NOW() WHERE id=$1 RETURNING *`,
-    [internalId,p.sku,p.name,p.brand,p.category,p.description,p.cost,p.publicPrice,p.distributorPrice,p.stock,JSON.stringify(p.images||[]),p.active]);
-  return rows[0] ? rowToProduct(rows[0]) : null;
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+    const before = await client.query('SELECT stock FROM manual_products WHERE id=$1 FOR UPDATE', [internalId]);
+    if (!before.rowCount) { await client.query('ROLLBACK'); return null; }
+    const oldStock = Number(before.rows[0].stock || 0);
+    const { rows } = await client.query(`UPDATE manual_products SET sku=$2,name=$3,brand=$4,category=$5,description=$6,cost=$7,
+      public_price=$8,distributor_price=$9,stock=$10,images=$11,active=$12,updated_at=NOW() WHERE id=$1 RETURNING *`,
+      [internalId,p.sku,p.name,p.brand,p.category,p.description,p.cost,p.publicPrice,p.distributorPrice,p.stock,JSON.stringify(p.images||[]),p.active]);
+    const newStock = Number(p.stock || 0);
+    const delta = newStock - oldStock;
+    if (delta !== 0) {
+      await client.query(`INSERT INTO inventory_movements
+        (product_id,movement_type,quantity,stock_after,reason) VALUES($1,'manual',$2,$3,$4)`,
+        [internalId, delta, newStock, 'Ajuste manual desde Admin']);
+    }
+    await client.query('COMMIT');
+    return rowToProduct(rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally { client.release(); }
 }
 async function remove(id) {
   const internalId=String(id).replace(/^cedia-/, '');

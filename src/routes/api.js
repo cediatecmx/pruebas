@@ -7,6 +7,7 @@ const distributorsStore = require('../data/distributorsStore');
 const productsStore = require('../data/productsStore');
 const marketingStore = require('../data/marketingStore');
 const fulfillmentService = require('../services/fulfillmentService');
+const inventoryService = require('../services/inventoryService');
 const mercadopago = require('../connectors/mercadopago');
 const auth = require('../security/auth');
 const { attachDistributorFlag } = require('./distributor');
@@ -98,6 +99,7 @@ router.get('/admin/products', auth.requireAdmin, async(req,res,next)=>{try{res.j
 router.post('/admin/products', auth.requireAdmin, auth.requireSameOrigin, async(req,res,next)=>{try{const r=await productsStore.create(normalizeManualProduct(req.body));catalogService.clearCache();res.status(201).json(r);}catch(e){if(/obligatorios|inválid/.test(e.message))return res.status(400).json({error:e.message});next(e);}});
 router.put('/admin/products/:id', auth.requireAdmin, auth.requireSameOrigin, async(req,res,next)=>{try{const r=await productsStore.update(req.params.id,normalizeManualProduct(req.body));if(!r)return res.status(404).json({error:'Producto no encontrado.'});catalogService.clearCache();res.json(r);}catch(e){if(/obligatorios|inválid/.test(e.message))return res.status(400).json({error:e.message});next(e);}});
 router.delete('/admin/products/:id', auth.requireAdmin, auth.requireSameOrigin, async(req,res,next)=>{try{await productsStore.remove(req.params.id);catalogService.clearCache();res.json({ok:true});}catch(e){next(e);}});
+router.get('/admin/inventory/movements', auth.requireAdmin, async(req,res,next)=>{try{res.json(await inventoryService.listMovements({productId:req.query.productId,limit:req.query.limit}));}catch(e){next(e);}});
 
 // ---------- Banners y promociones ----------
 router.get('/marketing/banners', async(req,res,next)=>{try{res.json(await marketingStore.listBanners({publicOnly:true}));}catch(e){next(e);}});
@@ -169,6 +171,13 @@ router.post('/admin/orders/:id/sync-payment', auth.requireAdmin, auth.requireSam
     const payment = await mercadopago.getPayment(order.mpPaymentId);
     const paymentMap = { approved: 'pagado', rejected: 'rechazado', refunded: 'reembolsado', cancelled: 'cancelado', pending: 'pendiente', in_process: 'pendiente' };
     const paymentStatus = paymentMap[payment.status] || order.paymentStatus;
+    if (payment.status === 'approved') {
+      await inventoryService.applyPaidOrder(order);
+      catalogService.clearCache();
+    } else if (payment.status === 'refunded' || payment.status === 'cancelled') {
+      await inventoryService.restoreOrder(order, payment.status === 'refunded' ? 'Reembolso' : 'Cancelación');
+      catalogService.clearCache();
+    }
     const patch = { paymentStatus, mpPaymentId: String(payment.id || order.mpPaymentId) };
     if (paymentStatus === 'pagado' && order.orderStatus === 'recibido') patch.orderStatus = 'preparando';
     res.json(await ordersStore.update(order.id, patch));

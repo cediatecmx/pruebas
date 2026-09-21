@@ -1,0 +1,15 @@
+CEDIA — Inventario automático
+
+Incluye:
+- Descuento automático de existencia cuando Mercado Pago confirma un pago aprobado.
+- Protección contra descuentos duplicados si Mercado Pago reenvía el webhook.
+- Reposición automática cuando Mercado Pago reporta reembolso o cancelación, siempre que ese pedido hubiera descontado inventario.
+- Los cambios manuales de existencia desde Productos CEDIA quedan registrados.
+- El inventario inicial de productos nuevos queda registrado.
+- Nuevo panel “Movimientos de inventario” en Admin.
+- Historial con fecha, producto, SKU, tipo de movimiento, cantidad, existencia resultante y pedido/referencia.
+- El botón “Verificar pago” del Admin también sincroniza el inventario de forma segura.
+- Solo afecta productos propios CEDIA (IDs cedia-*). Los proveedores externos siguen separados.
+
+La tabla inventory_movements se crea automáticamente al arrancar Railway mediante db.init().
+No hace falta crear una variable nueva.

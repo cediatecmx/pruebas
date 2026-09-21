@@ -303,3 +303,16 @@
 .admin-list-item__meta { color:var(--text-muted); font-size:.82rem; }
 .admin-list-item__actions { display:flex; gap:6px; flex-wrap:wrap; }
 @media(max-width:700px){.admin-list-item{grid-template-columns:1fr}.admin-list-item img{width:100%;height:140px}.admin-list-item__actions{justify-content:flex-start}}
+
+/* Subida y previsualización de imágenes */
+.upload-preview{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 14px}.upload-preview__item{position:relative;width:92px;height:92px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff}.upload-preview__item img{width:100%;height:100%;object-fit:contain}.upload-preview__item button{position:absolute;top:4px;right:4px;width:25px;height:25px;padding:0;border-radius:50%;line-height:1}
+
+
+/* ---------- Historial de inventario ---------- */
+.inventory-table { margin-top: 16px; overflow-x: auto; }
+.inventory-table__head, .inventory-table__row { display: grid; grid-template-columns: 155px minmax(180px,1.5fr) 130px 85px 85px minmax(150px,1fr); gap: 12px; align-items: center; min-width: 900px; padding: 10px 12px; }
+.inventory-table__head { font-size: .75rem; font-weight: 700; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+.inventory-table__row { font-size: .82rem; border-bottom: 1px solid var(--border); }
+.inventory-table__row small { display:block; color:var(--text-muted); margin-top:2px; }
+.inventory-pos { font-weight:700; }
+.inventory-neg { font-weight:700; }

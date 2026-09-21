@@ -6,6 +6,7 @@ const mlRoutes = require('./src/routes/mercadolibre');
 const paymentsRoutes = require('./src/routes/payments');
 const distributorRoutes = require('./src/routes/distributor');
 const db = require('./src/data/db');
+const uploads = require('./src/routes/uploads');
 
 const app = express();
 app.disable('x-powered-by');
@@ -25,6 +26,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use('/uploads', express.static(uploads.uploadDir, { fallthrough: false, maxAge: '7d' }));
+app.use('/api', uploads.router);
 app.use('/api', apiRoutes);
 app.use('/api/mercadolibre', mlRoutes);
 app.use('/api', paymentsRoutes);
