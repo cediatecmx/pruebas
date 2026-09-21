@@ -197,6 +197,19 @@ router.post('/orders/lookup', rateLimit(lookupAttempts, 15), async (req, res, ne
     const { orderId, phone } = req.body || {};
     if (!orderId || !phone) return res.status(400).json({ error: 'Ingresa el folio y el teléfono del pedido.' });
 
+    items: (order.items || []).map((it) => ({
+  id: it.id || '',
+  sku: it.sku || '',
+  name: it.name || 'Producto',
+  description: it.description || '',
+  image: it.image || '',
+  qty: Number(it.qty || 1),
+  price: Number(it.price || 0),
+  subtotal: Number(
+    it.subtotal ??
+    (Number(it.price || 0) * Number(it.qty || 1))
+  )
+})),
     const order = await ordersStore.findById(String(orderId).trim());
     const phoneMatches = order && String(order.customer?.phone || '').replace(/\D/g, '') === String(phone).replace(/\D/g, '');
     if (!order || !phoneMatches) {
