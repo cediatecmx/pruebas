@@ -608,3 +608,73 @@ button {
 .tracking-box { padding:12px 14px; margin:14px 0; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-2); }
 .track-cancelled { padding:12px; margin:14px 0; border-radius:var(--radius); background:rgba(220,53,69,.10); color:#DC3545; font-weight:600; }
 @media (max-width:640px) { .track-step small { font-size:.68rem; } .track-timeline { gap:2px; } }
+
+
+/* ---------- Productos en rastreo ---------- */
+
+.track-products {
+  margin-top: 22px;
+}
+
+.track-products h4 {
+  margin-bottom: 12px;
+}
+
+.track-product {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+
+.track-product__image {
+  width: 90px;
+  height: 90px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.track-product__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.track-product__info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.track-product__sku {
+  font-size: .75rem;
+  color: var(--text-muted);
+}
+
+.track-product__description {
+  margin: 3px 0;
+  color: var(--text-muted);
+  font-size: .82rem;
+  line-height: 1.45;
+}
+
+.track-product__price {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 5px;
+}
+
+@media (max-width: 640px) {
+  .track-product {
+    grid-template-columns: 65px 1fr;
+  }
+
+  .track-product__image {
+    width: 65px;
+    height: 65px;
+  }
+}
