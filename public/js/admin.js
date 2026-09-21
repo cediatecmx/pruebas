@@ -75,6 +75,91 @@ async function loadOrders() {
       <div>${esc(o.customer?.name)} · ${esc(o.customer?.phone)} · ${Number(o.total || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</div>
       <div class="order-card__address">${o.shippingAddress ? `${esc(o.shippingAddress.calle)} ${esc(o.shippingAddress.numero)}, ${esc(o.shippingAddress.colonia)}, ${esc(o.shippingAddress.ciudad)}, ${esc(o.shippingAddress.estado)}, CP ${esc(o.shippingAddress.cp)}` : 'Sin dirección'}</div>
 
+<div class="order-products">
+
+  <div class="order-products__title">
+    Productos del pedido
+  </div>
+
+  ${(o.items || []).map((item) => {
+
+    const qty = Number(item.qty || 1);
+    const price = Number(item.price || 0);
+
+    const subtotal = Number(
+      item.subtotal ?? (price * qty)
+    );
+
+    return `
+      <div class="order-product">
+
+        <div class="order-product__image">
+          ${
+            item.image
+              ? `<img src="${esc(item.image)}" alt="${esc(item.name || 'Producto')}">`
+              : `<div class="order-product__no-image">Sin imagen</div>`
+          }
+        </div>
+
+        <div class="order-product__info">
+
+          <strong class="order-product__name">
+            ${esc(item.name || 'Producto')}
+          </strong>
+
+          ${
+            item.sku
+              ? `<span class="order-product__sku">
+                   SKU / Modelo: ${esc(item.sku)}
+                 </span>`
+              : ''
+          }
+
+          ${
+            item.description
+              ? `<p class="order-product__description">
+                   ${esc(item.description)}
+                 </p>`
+              : ''
+          }
+
+          <div class="order-product__numbers">
+
+            <span>
+              Cantidad:
+              <strong>${qty}</strong>
+            </span>
+
+            <span>
+              Precio:
+              <strong>
+                ${price.toLocaleString('es-MX', {
+                  style: 'currency',
+                  currency: 'MXN'
+                })}
+              </strong>
+            </span>
+
+            <span>
+              Subtotal:
+              <strong>
+                ${subtotal.toLocaleString('es-MX', {
+                  style: 'currency',
+                  currency: 'MXN'
+                })}
+              </strong>
+            </span>
+
+          </div>
+
+        </div>
+
+      </div>
+    `;
+  }).join('')}
+
+</div>
+
       <div class="order-management">
         <label>Estado del pedido
           <select data-field="status" data-order="${esc(o.id)}">
