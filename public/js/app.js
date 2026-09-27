@@ -4,6 +4,7 @@ const state = {
   source: '',
   category: '',
   cart: JSON.parse(localStorage.getItem('cedia-cart') || '[]'),
+  categoryCatalog: [],
 };
 
 const el = (sel) => document.querySelector(sel);
@@ -42,12 +43,16 @@ async function loadProducts() {
   const res = await fetch(`/api/products?${params}`);
   const data = await res.json();
   state.products = data.products;
+  if (!state.query && !state.category) {
+    state.categoryCatalog = [...new Set(state.products.map((p) => p.category).filter(Boolean))].sort();
+  }
   renderCategoryFilters();
+  renderCategoryCards();
   renderProducts();
 }
 
 function renderCategoryFilters() {
-  const categories = [...new Set(state.products.map((p) => p.category).filter(Boolean))].sort();
+  const categories = state.categoryCatalog.length ? state.categoryCatalog : [...new Set(state.products.map((p) => p.category).filter(Boolean))].sort();
   const container = el('#categoryList');
   const current = state.category;
   container.innerHTML = `<label><input type="radio" name="category" value="" ${!current ? 'checked' : ''}> Todas</label>` +
@@ -60,6 +65,41 @@ function renderCategoryFilters() {
       loadProducts();
     })
   );
+}
+
+function categoryIcon(name = '') {
+  const n = name.toLowerCase();
+  if (n.includes('video') || n.includes('cámara') || n.includes('camara') || n.includes('cctv')) return '◉';
+  if (n.includes('red') || n.includes('network') || n.includes('switch')) return '⌁';
+  if (n.includes('cómput') || n.includes('comput') || n.includes('laptop')) return '▣';
+  if (n.includes('audio')) return '♪';
+  if (n.includes('almacen') || n.includes('disco') || n.includes('memoria')) return '▤';
+  if (n.includes('acceso') || n.includes('videoport')) return '⌂';
+  if (n.includes('energ') || n.includes('eléct') || n.includes('elect')) return 'ϟ';
+  return '◇';
+}
+
+function renderCategoryCards() {
+  const container = el('#categoryCards');
+  if (!container) return;
+  const categories = state.categoryCatalog.length ? state.categoryCatalog : [...new Set(state.products.map((p) => p.category).filter(Boolean))].sort();
+  if (!categories.length) {
+    container.innerHTML = '<p class="empty-note">Las categorías aparecerán aquí al cargar productos.</p>';
+    return;
+  }
+  container.innerHTML = categories.slice(0, 8).map((c) => {
+    const count = (!state.query && !state.category) ? state.products.filter((p) => p.category === c).length : null;
+    return `<button class="category-card ${state.category === c ? 'active' : ''}" data-category="${c}">
+      <span class="category-card__icon">${categoryIcon(c)}</span>
+      <span><strong>${c}</strong><small>${count === null ? 'Explorar categoría' : `${count} producto${count === 1 ? '' : 's'}`}</small></span>
+      <b>→</b>
+    </button>`;
+  }).join('');
+  container.querySelectorAll('[data-category]').forEach((btn) => btn.addEventListener('click', () => {
+    state.category = btn.dataset.category;
+    loadProducts();
+    document.querySelector('#catalogo')?.scrollIntoView({ behavior: 'smooth' });
+  }));
 }
 
 function renderProducts() {
@@ -79,10 +119,10 @@ function renderProducts() {
       </div>
       <span class="brand-tag">${p.brand || 'Grupo CEDIA'}</span>
       <h3 data-product-id="${p.id}">${p.name || 'Producto'}</h3>
-      ${p.description ? `<p class="product-card__desc">${p.description}</p>` : ''}
+      <button class="product-card__view" type="button" data-product-id="${p.id}">Ver detalles</button>
       <div class="price-row">
         ${p.promotion ? `<span class="discount-badge">-${p.promotion.discountPercent}%</span><span class="old-price">${money(Number(p.originalPrice)||0)}</span>` : ''}<span class="price">${money(Number(p.price) || 0)}</span>
-        <span class="stock">${p.stock > 0 ? `${p.stock} disp.` : 'Agotado'}</span>
+        <span class="stock">${p.stock > 5 ? 'Disponible' : p.stock > 0 ? `Últimas ${p.stock}` : 'Agotado'}</span>
       </div>
       <button class="add-cart-btn" ${p.stock > 0 ? '' : 'disabled'} data-id="${p.id}">
         Agregar al carrito
@@ -156,7 +196,7 @@ function addToCart(id) {
   if (existing) {
     existing.qty += 1;
   } else {
-    state.cart.push({ id: product.id, name: product.name, price: product.price, qty: 1 });
+    state.cart.push({ id: product.id, name: product.name, price: product.price, image: product.images?.[0] || '', qty: 1 });
   }
   persistCart();
   renderCart();
@@ -180,19 +220,22 @@ function persistCart() {
 
 function renderCart() {
   const container = el('#cartItems');
-  el('#cartCount').textContent = state.cart.reduce((s, i) => s + i.qty, 0);
+  const cartQty = state.cart.reduce((s, i) => s + i.qty, 0);
+  el('#cartCount').textContent = cartQty;
+  if (el('#mobileCartCount')) el('#mobileCartCount').textContent = cartQty;
 
   if (!state.cart.length) {
     container.innerHTML = '<p style="color:var(--text-muted)">Tu carrito está vacío.</p>';
   } else {
     container.innerHTML = state.cart.map((i) => `
       <div class="cart-item">
-        <div>
-          <div>${i.name}</div>
+        <div class="cart-item__image">${i.image ? `<img src="${i.image}" alt="${i.name}">` : '<span>◇</span>'}</div>
+        <div class="cart-item__body">
+          <div class="cart-item__name">${i.name}</div>
           <div class="qty-controls">
-            <button data-action="dec" data-id="${i.id}">−</button>
-            ${i.qty}
-            <button data-action="inc" data-id="${i.id}">+</button>
+            <button data-action="dec" data-id="${i.id}" aria-label="Restar">−</button>
+            <span>${i.qty}</span>
+            <button data-action="inc" data-id="${i.id}" aria-label="Sumar">+</button>
           </div>
         </div>
         <strong>${money(i.price * i.qty)}</strong>
@@ -293,6 +336,27 @@ el('#searchInput').addEventListener('keydown', (e) => {
   }
 });
 
+const searchInput = el('#searchInput');
+const searchClear = el('#searchClear');
+if (searchInput && searchClear) {
+  searchInput.addEventListener('input', () => { searchClear.hidden = !searchInput.value; });
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    searchClear.hidden = true;
+    state.query = '';
+    loadProducts();
+    searchInput.focus();
+  });
+}
+
+const openTracking = () => el('#trackModal')?.classList.add('open');
+['#trackHeaderBtn','#trackNavBtn','#mobileTrackBtn'].forEach((id) => el(id)?.addEventListener('click', openTracking));
+el('#mobileCartBtn')?.addEventListener('click', openCart);
+el('#mobileSearchBtn')?.addEventListener('click', () => { window.scrollTo({ top: 0, behavior: 'smooth' }); setTimeout(() => el('#searchInput')?.focus(), 350); });
+el('#mobileFilterBtn')?.addEventListener('click', () => el('#filtersPanel')?.classList.add('open'));
+el('#closeFilters')?.addEventListener('click', () => el('#filtersPanel')?.classList.remove('open'));
+el('#showAllCategories')?.addEventListener('click', () => { state.category = ''; loadProducts(); document.querySelector('#catalogo')?.scrollIntoView({ behavior: 'smooth' }); });
+
 el('#cartToggle').addEventListener('click', openCart);
 el('#closeCart').addEventListener('click', closeCart);
 el('#cartOverlay').addEventListener('click', closeCart);
@@ -313,7 +377,9 @@ document.addEventListener('keydown', (e) => {
 });
 
 
-el('#whatsappFloat').href = `https://wa.me/${window.COMPANY.phoneWhatsapp}?text=${encodeURIComponent('Hola, tengo una pregunta sobre un producto de Grupo CEDIA.')}`;
+const whatsappUrl = `https://wa.me/${window.COMPANY.phoneWhatsapp}?text=${encodeURIComponent('Hola, tengo una pregunta sobre un producto de Grupo CEDIA.')}`;
+el('#whatsappFloat').href = whatsappUrl;
+if (el('#heroWhatsapp')) el('#heroWhatsapp').href = whatsappUrl;
 
 // ---------- Sesión de distribuidor ----------
 state.distributor = null;

@@ -11,49 +11,75 @@
 </head>
 <body>
 
+<div class="announcement-bar">Compra tecnología con asesoría especializada · Pago seguro con Mercado Pago · Atención por WhatsApp</div>
 <header class="topbar">
   <div class="topbar__inner">
-    <a class="brand" href="/">
+    <a class="brand" href="/" aria-label="Grupo CEDIA - Inicio">
       <span class="brand__mark"><img src="/img/logo-cedia.png" alt="Grupo CEDIA" /></span>
-      <span class="brand__text">
-        <strong>Grupo CEDIA</strong>
-        <span>Ingeniería e Integración Tecnológica</span>
-      </span>
+      <span class="brand__text"><strong>Grupo CEDIA</strong><span>Ingeniería e Integración Tecnológica</span></span>
     </a>
 
-    <div class="search">
-      <input id="searchInput" type="text" placeholder="Buscar cámaras, laptops, redes, audio…" />
+    <div class="search search--main">
+      <span class="search__icon">⌕</span>
+      <input id="searchInput" type="search" autocomplete="off" placeholder="Busca por producto, marca, modelo o SKU…" />
+      <button id="searchClear" class="search__clear" type="button" aria-label="Limpiar búsqueda" hidden>×</button>
       <button id="searchBtn" aria-label="Buscar">Buscar</button>
     </div>
 
-    <span class="topbar__contact">📞 <a href="tel:+524524047679">452 404 7679</a></span>
-
-    <button class="dist-toggle" id="distToggle">Soy distribuidor</button>
-
-    <button class="cart-toggle" id="cartToggle">
-      Carrito <span class="cart-count" id="cartCount">0</span>
-    </button>
+    <div class="topbar__actions">
+      <button class="header-link" id="trackHeaderBtn" type="button"><span>📦</span><small>Rastrear</small></button>
+      <button class="dist-toggle" id="distToggle"><span>👤</span><small>Distribuidor</small></button>
+      <button class="cart-toggle" id="cartToggle"><span>🛒</span><small>Carrito</small><b class="cart-count" id="cartCount">0</b></button>
+    </div>
   </div>
 </header>
 
-<section id="promoSlider" class="promo-slider" hidden><div id="promoSlides" class="promo-slides"></div><button class="promo-arrow promo-prev" type="button" aria-label="Anterior">‹</button><button class="promo-arrow promo-next" type="button" aria-label="Siguiente">›</button><div id="promoDots" class="promo-dots"></div></section>
+<nav class="store-nav" aria-label="Navegación de tienda">
+  <div class="store-nav__inner">
+    <a href="#catalogo">Productos</a>
+    <a href="#categorias">Categorías</a>
+    <a href="#promoSlider">Ofertas</a>
+    <button id="trackNavBtn" type="button">Rastrear pedido</button>
+    <a class="store-nav__contact" href="tel:+524524047679">452 404 7679</a>
+  </div>
+</nav>
+
+<section id="promoSlider" class="promo-slider" hidden>
+  <div id="promoSlides" class="promo-slides"></div>
+  <button class="promo-arrow promo-prev" type="button" aria-label="Anterior">‹</button>
+  <button class="promo-arrow promo-next" type="button" aria-label="Siguiente">›</button>
+  <div id="promoDots" class="promo-dots"></div>
+</section>
 
 <section class="hero">
   <div class="hero__inner">
-    <h1>La tienda de tecnologia a la vanguardia<br>de la seguridad en un solo sitio.</h1>
-    <p>Grupo CEDIA integra en <strong> Michoacán, Guanajuato y Querétaro </strong> , brindando tranquilidad y seguridad en casa hogar.</p>
-       <div class="hero__badges">
-      <span>Videovigilancia</span>
-      <span>Redes</span>
-      <span>Cómputo</span>
-      <span>Audio y más</span>
+    <div class="hero__content">
+      <span class="eyebrow">Tecnología para hogar, negocio y proyectos</span>
+      <h1>Encuentra la tecnología correcta, con asesoría antes y después de comprar.</h1>
+      <p>Videovigilancia, redes, cómputo, almacenamiento y más. Compra en línea con el respaldo de Grupo CEDIA.</p>
+      <div class="hero__actions">
+        <a class="btn-primary" href="#catalogo">Ver productos</a>
+        <a class="btn-secondary" id="heroWhatsapp" href="#" target="_blank">Pedir asesoría</a>
+      </div>
+    </div>
+    <div class="hero__trust">
+      <div><strong>Pago seguro</strong><span>Procesado con Mercado Pago</span></div>
+      <div><strong>Asesoría especializada</strong><span>Te ayudamos a elegir</span></div>
+      <div><strong>Seguimiento</strong><span>Consulta el estado de tu pedido</span></div>
     </div>
   </div>
 </section>
 
-<main class="layout">
-  <aside class="filters">
-    <h2>Filtrar</h2>
+<section class="category-showcase" id="categorias">
+  <div class="section-heading">
+    <div><span class="eyebrow">Explora rápido</span><h2>Compra por categoría</h2></div>
+    <button id="showAllCategories" type="button">Ver todos los productos</button>
+  </div>
+  <div id="categoryCards" class="category-cards"></div>
+</section>
+<main class="layout" id="catalogo">
+  <aside class="filters" id="filtersPanel">
+    <div class="filters__head"><h2>Filtrar productos</h2><button id="closeFilters" type="button">×</button></div>
 
    
 
@@ -67,7 +93,8 @@
 
   <section class="catalog">
     <div class="catalog__header">
-      <span id="resultsCount">Cargando catálogo…</span>
+      <div><span class="eyebrow">Catálogo</span><h2>Productos</h2><span id="resultsCount">Cargando catálogo…</span></div>
+      <button id="mobileFilterBtn" class="mobile-filter-btn" type="button">☰ Filtrar</button>
     </div>
     <div id="productGrid" class="product-grid"></div>
   </section>
@@ -91,7 +118,7 @@
     <input type="email" name="email" placeholder="Correo (opcional)" />
 
     <h3>Dirección de envío</h3>
-    <p class="hint">Aquí es donde el mayorista enviará el producto directamente.</p>
+    <p class="hint">Ingresa la dirección donde deseas recibir tu pedido.</p>
     <input type="text" name="calle" placeholder="Calle" required />
     <input type="text" name="numero" placeholder="Número" required />
     <input type="text" name="colonia" placeholder="Colonia" required />
@@ -171,6 +198,14 @@
   <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.39 1.26 4.81L2 22l5.44-1.36a9.9 9.9 0 0 0 4.6 1.13h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.51 2 12.04 2zm0 18.02h-.01a8.1 8.1 0 0 1-4.13-1.13l-.3-.18-3.07.77.82-3-.19-.31a8.1 8.1 0 0 1-1.24-4.26c0-4.49 3.65-8.14 8.14-8.14 4.49 0 8.14 3.65 8.14 8.14 0 4.49-3.65 8.11-8.16 8.11zm4.46-6.08c-.24-.12-1.43-.7-1.65-.79-.22-.08-.38-.12-.55.12-.16.24-.63.79-.77.95-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.2-.72-.64-1.2-1.43-1.34-1.67-.14-.24-.02-.37.11-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.55-1.33-.76-1.82-.2-.48-.4-.42-.55-.42-.14 0-.3-.02-.46-.02s-.42.06-.64.3c-.22.24-.85.83-.85 2.03 0 1.2.87 2.36.99 2.52.12.16 1.71 2.61 4.14 3.66.58.25 1.03.4 1.38.51.58.18 1.11.16 1.53.1.47-.07 1.43-.58 1.63-1.15.2-.56.2-1.04.14-1.15-.06-.1-.22-.16-.46-.28z"/></svg>
   <span>Escríbenos por WhatsApp</span>
 </a>
+
+<nav class="mobile-bottom-nav" aria-label="Navegación móvil">
+  <a href="/">⌂<span>Inicio</span></a>
+  <a href="#categorias">▦<span>Categorías</span></a>
+  <button id="mobileSearchBtn" type="button">⌕<span>Buscar</span></button>
+  <button id="mobileTrackBtn" type="button">□<span>Pedidos</span></button>
+  <button id="mobileCartBtn" type="button">🛒<span>Carrito</span><b id="mobileCartCount">0</b></button>
+</nav>
 
 <footer class="site-footer">
   <p>Grupo CEDIA — Ingeniería e Integración Tecnológica · Tel. 452 404 7679 · catálogo agregado con fines de demostración.</p>
