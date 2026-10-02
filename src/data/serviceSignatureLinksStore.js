@@ -13,6 +13,11 @@ async function create(orderId, type, user, ttlHours=168){
   await db.query(`INSERT INTO service_signature_links(order_id,signature_type,token_hash,created_by,expires_at) VALUES($1,$2,$3,$4,$5)`,[orderId,type,tokenHash,user?.id||null,expiresAt]);
   return {token,expiresAt};
 }
+async function findByToken(token){
+  const {rows}=await db.query(`SELECT * FROM service_signature_links WHERE token_hash=$1 LIMIT 1`,[hashToken(token)]);
+  return rows[0]||null;
+}
+
 async function findValid(token){
   const {rows}=await db.query(`SELECT * FROM service_signature_links WHERE token_hash=$1 LIMIT 1`,[hashToken(token)]);
   const r=rows[0]; if(!r)return null;
@@ -20,4 +25,4 @@ async function findValid(token){
   return valid ? r : null;
 }
 async function markUsed(id){await db.query(`UPDATE service_signature_links SET used_at=NOW() WHERE id=$1 AND used_at IS NULL`,[id]);}
-module.exports={create,findValid,markUsed,VALID_TYPES};
+module.exports={findByToken,create,findValid,markUsed,VALID_TYPES};

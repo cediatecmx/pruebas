@@ -21,6 +21,7 @@ function mapRow(row) {
     trackingNumber: row.tracking_number || '',
     shippedAt: row.shipped_at || undefined,
     deliveredAt: row.delivered_at || undefined,
+    trackingPhotos: row.tracking_photos || [],
     updatedAt: row.updated_at || row.created_at,
     mpPreferenceId: row.mp_preference_id || undefined,
     mpPaymentId: row.mp_payment_id || undefined,
@@ -38,6 +39,7 @@ async function create(order) {
     orderStatus: 'recibido',
     carrier: '',
     trackingNumber: '',
+    trackingPhotos: [],
     fulfillment: [],
     ...order,
   };
@@ -64,10 +66,10 @@ async function update(id, patch) {
   const next = { ...current, ...patch };
   await db.query(`UPDATE orders SET customer=$2, shipping_address=$3, items=$4, notes=$5, total=$6,
     payment_status=$7, mp_preference_id=$8, mp_payment_id=$9, checkout_error=$10, fulfillment=$11,
-    order_status=$12, carrier=$13, tracking_number=$14, shipped_at=$15, delivered_at=$16, updated_at=NOW()
+    order_status=$12, carrier=$13, tracking_number=$14, shipped_at=$15, delivered_at=$16, tracking_photos=$17, updated_at=NOW()
     WHERE id=$1`, [id, toJson(next.customer, '{}'), toJson(next.shippingAddress, '{}'), toJson(next.items, '[]'), next.notes || '', next.total,
     next.paymentStatus, next.mpPreferenceId || null, next.mpPaymentId || null, next.checkoutError ? toJson(next.checkoutError, '{}') : null, toJson(next.fulfillment || [], '[]'),
-    next.orderStatus || 'recibido', next.carrier || null, next.trackingNumber || null, next.shippedAt || null, next.deliveredAt || null]);
+    next.orderStatus || 'recibido', next.carrier || null, next.trackingNumber || null, next.shippedAt || null, next.deliveredAt || null, toJson(next.trackingPhotos || [], '[]')]);
   return next;
 }
 

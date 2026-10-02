@@ -534,6 +534,7 @@ el('#trackForm').addEventListener('submit', async (e) => {
     <p><strong>Fecha:</strong> ${new Date(data.createdAt).toLocaleString('es-MX')}</p>
     <p><strong>Total:</strong> ${money(data.total)}</p>
     ${data.trackingNumber ? `<div class="tracking-box"><strong>Envío</strong><br>Paquetería: ${data.carrier || '—'}<br>Guía: ${data.trackingNumber}</div>` : ''}
+    ${(data.trackingPhotos||[]).length ? `<div class="tracking-box"><strong>Fotos de seguimiento</strong><div class="tracking-photo-grid">${data.trackingPhotos.map(x=>`<a href="${x}" target="_blank" rel="noopener"><img src="${x}" alt="Foto de seguimiento del pedido"></a>`).join('')}</div></div>` : ''}
    <div class="track-products">
 
   <h4>Productos de tu pedido</h4>

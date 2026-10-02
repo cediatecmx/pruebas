@@ -11,6 +11,7 @@ const serviceOrdersStore = require('../data/serviceOrdersStore');
 const serviceSignatureLinksStore = require('../data/serviceSignatureLinksStore');
 const fulfillmentService = require('../services/fulfillmentService');
 const inventoryService = require('../services/inventoryService');
+const serviceOrderPdf = require('../services/serviceOrderPdf');
 const mercadopago = require('../connectors/mercadopago');
 const auth = require('../security/auth');
 const { attachDistributorFlag } = require('./distributor');
@@ -91,6 +92,31 @@ router.put('/admin/users/:id', auth.requireAdmin, auth.requireRole('admin'), aut
 const serviceRoles=auth.requireRole('admin','reception','technician');
 router.get('/admin/service-orders', auth.requireAdmin, serviceRoles, async(req,res,next)=>{try{res.json(await serviceOrdersStore.list());}catch(e){next(e);}});
 router.get('/admin/service-orders/:id', auth.requireAdmin, serviceRoles, async(req,res,next)=>{try{const o=await serviceOrdersStore.find(req.params.id);if(!o)return res.status(404).json({error:'Orden no encontrada'});res.json({...o,events:await serviceOrdersStore.events(o.id)});}catch(e){next(e);}});
+
+router.get('/admin/service-orders/:id/pdf', auth.requireAdmin, serviceRoles, async(req,res,next)=>{
+  try{
+    const o=await serviceOrdersStore.find(req.params.id);
+    if(!o)return res.status(404).json({error:'Orden no encontrada'});
+    const pdf=serviceOrderPdf.build(o);
+    res.setHeader('Content-Type','application/pdf');
+    res.setHeader('Content-Disposition',`${req.query.download==='1'?'attachment':'inline'}; filename="${o.id}.pdf"`);
+    res.send(pdf);
+  }catch(e){next(e);}
+});
+router.get('/service-signature/:token/pdf', async(req,res,next)=>{
+  try{
+    const link=await serviceSignatureLinksStore.findByToken(req.params.token);
+    if(!link)return res.status(404).json({error:'Enlace no encontrado.'});
+    const o=await serviceOrdersStore.find(link.order_id);
+    if(!o)return res.status(404).json({error:'Orden no encontrada.'});
+    const sig=o.signatures?.[link.signature_type];
+    if(!sig)return res.status(409).json({error:'La firma todavía no ha sido registrada.'});
+    const pdf=serviceOrderPdf.build(o);
+    res.setHeader('Content-Type','application/pdf');
+    res.setHeader('Content-Disposition',`${req.query.download==='1'?'attachment':'inline'}; filename="${o.id}.pdf"`);
+    res.send(pdf);
+  }catch(e){next(e);}
+});
 router.post('/admin/service-orders', auth.requireAdmin, auth.requireRole('admin','reception'), auth.requireSameOrigin, async(req,res,next)=>{try{const b=req.body||{};if(!b.customer?.name||!b.customer?.phone||!b.equipment?.type||!b.equipment?.brandModel||!b.intake?.reportedFault)return res.status(400).json({error:'Cliente, teléfono, tipo/equipo y falla reportada son obligatorios.'});res.status(201).json(await serviceOrdersStore.create(b,req.adminUser));}catch(e){next(e);}});
 router.put('/admin/service-orders/:id', auth.requireAdmin, serviceRoles, auth.requireSameOrigin, async(req,res,next)=>{try{const b=req.body||{};if(req.adminUser.role==='reception'){const allowed=['status','delivery','signatures','photos'];for(const k of Object.keys(b))if(!allowed.includes(k))return res.status(403).json({error:'Recepción no puede modificar diagnóstico o reparación.'});}const o=await serviceOrdersStore.patch(req.params.id,b,req.adminUser);if(!o)return res.status(404).json({error:'Orden no encontrada'});res.json(o);}catch(e){next(e);}});
 
@@ -133,7 +159,7 @@ router.post('/service-signature/:token', auth.requireSameOrigin, async(req,res,n
     await serviceOrdersStore.patch(o.id,{signatures}, {id:null,name:'Cliente (firma remota)',role:'client'});
     await serviceSignatureLinksStore.markUsed(link.id);
     await serviceOrdersStore.event(o.id,{id:null,name:o.customer?.name||'Cliente'},'firma_remota',{type:link.signature_type});
-    res.json({ok:true,orderId:o.id,type:link.signature_type});
+    res.json({ok:true,orderId:o.id,type:link.signature_type,pdfUrl:`/api/service-signature/${encodeURIComponent(req.params.token)}/pdf?download=1`});
   }catch(e){next(e);}
 });
 
@@ -208,7 +234,8 @@ router.put('/admin/orders/:id/status', auth.requireAdmin, auth.requireSameOrigin
     if (orderStatus === 'enviado' && (!carrier || !trackingNumber)) {
       return res.status(400).json({ error: 'Para marcar como enviado agrega paquetería y número de guía.' });
     }
-    const patch = { orderStatus, carrier, trackingNumber };
+    const trackingPhotos = Array.isArray(req.body?.trackingPhotos) ? req.body.trackingPhotos.filter(x=>typeof x==='string').slice(0,12) : (order.trackingPhotos || []);
+    const patch = { orderStatus, carrier, trackingNumber, trackingPhotos };
     if (orderStatus === 'enviado' && !order.shippedAt) patch.shippedAt = new Date().toISOString();
     if (orderStatus === 'entregado' && !order.deliveredAt) patch.deliveredAt = new Date().toISOString();
     res.json(await ordersStore.update(order.id, patch));
@@ -325,6 +352,7 @@ router.post('/orders/lookup', rateLimit(lookupAttempts, 15), async (req, res, ne
       trackingNumber: order.trackingNumber || '',
       shippedAt: order.shippedAt || null,
       deliveredAt: order.deliveredAt || null,
+      trackingPhotos: order.trackingPhotos || [],
 
       // Total
       total: Number(order.total || 0),

@@ -1,0 +1,16 @@
+NUEVO
+1) Orden de servicio en PDF:
+- Admin: Visualizar PDF y Descargar PDF dentro de cada orden.
+- Cliente: después de completar una firma remota aparece “Descargar mi orden en PDF”.
+- El PDF refleja el expediente actual, checklist, diagnóstico, trabajo, entrega y estado de las firmas.
+- Las firmas originales siguen almacenadas en el expediente digital y se visualizan desde Admin.
+
+2) Fotos en seguimiento de pedidos de tienda:
+- Admin > Pedidos > Seguimiento permite seleccionar JPG/PNG/WebP.
+- Se conservan hasta 12 fotos por pedido.
+- El cliente las ve al usar “Rastrear pedido”.
+- Usa el mismo UPLOAD_DIR/Volume ya configurado.
+
+3) Base de datos:
+- Se agrega automáticamente orders.tracking_photos (JSONB).
+- No requiere variables nuevas.

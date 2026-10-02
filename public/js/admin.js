@@ -58,6 +58,7 @@ const orderLabels = {
   entregado: 'Entregado', cancelado: 'Cancelado'
 };
 
+let ordersCache=[];
 async function loadOrders() {
   const res = await api('/api/admin/orders'); if (!res.ok) return;
   const orders = await res.json(); const container = el('#ordersList');
@@ -172,6 +173,11 @@ async function loadOrders() {
         <label>Número de guía
           <input data-field="tracking" data-order="${esc(o.id)}" value="${esc(o.trackingNumber || '')}" placeholder="Número de rastreo" />
         </label>
+        <label>Fotos de seguimiento
+          <input type="file" accept="image/jpeg,image/png,image/webp" multiple data-field="tracking-photos" data-order="${esc(o.id)}" />
+          <small class="hint">Puedes agregar fotos del empaque, preparación, guía o entrega.</small>
+        </label>
+        ${(o.trackingPhotos||[]).length?`<div class="tracking-photo-grid">${(o.trackingPhotos||[]).map(x=>`<a href="${esc(x)}" target="_blank" rel="noopener"><img src="${esc(x)}" alt="Seguimiento del pedido"></a>`).join('')}</div>`:''}
         <div class="order-actions">
           <button data-action="save-status" data-order="${esc(o.id)}">Guardar seguimiento</button>
           <button class="secondary" data-action="sync-payment" data-order="${esc(o.id)}">Verificar pago</button>
@@ -188,8 +194,14 @@ async function loadOrders() {
     const orderStatus = container.querySelector(`[data-field="status"][data-order="${CSS.escape(id)}"]`).value;
     const carrier = container.querySelector(`[data-field="carrier"][data-order="${CSS.escape(id)}"]`).value;
     const trackingNumber = container.querySelector(`[data-field="tracking"][data-order="${CSS.escape(id)}"]`).value;
+    const photoInput = container.querySelector(`[data-field="tracking-photos"][data-order="${CSS.escape(id)}"]`);
+    const currentOrder = ordersCache.find(x=>x.id===id);
+    const trackingPhotos = [...(currentOrder?.trackingPhotos||[])];
     const msg = container.querySelector(`[data-msg="${CSS.escape(id)}"]`);
-    const r = await api(`/api/admin/orders/${encodeURIComponent(id)}/status`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderStatus, carrier, trackingNumber }) });
+    try {
+      for (const file of [...(photoInput?.files||[])].slice(0,6)) trackingPhotos.push(await uploadImage(file,'service'));
+    } catch (e) { msg.textContent=e.message; return; }
+    const r = await api(`/api/admin/orders/${encodeURIComponent(id)}/status`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderStatus, carrier, trackingNumber, trackingPhotos:trackingPhotos.slice(0,12) }) });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) { msg.textContent = data.error || 'No se pudo guardar.'; return; }
     msg.textContent = 'Seguimiento actualizado.'; loadOrders();
@@ -362,7 +374,7 @@ async function openServiceOrder(id){
   const canTech=currentAdminUser.role==='admin'||currentAdminUser.role==='technician';
   const sig=o.signatures||{};
   box.innerHTML=`<div class="service-detail">
-    <div class="svc-detail-heading"><div><h4>Orden ${esc(o.id)}</h4><span class="svc-status-badge">${esc(SERVICE_STATUS_LABELS[o.status]||o.status)}</span></div><small>Actualizada ${o.updatedAt?new Date(o.updatedAt).toLocaleString('es-MX'):'—'}</small></div>
+    <div class="svc-detail-heading"><div><h4>Orden ${esc(o.id)}</h4><span class="svc-status-badge">${esc(SERVICE_STATUS_LABELS[o.status]||o.status)}</span></div><div class="svc-pdf-actions"><a class="button-like secondary" href="/api/admin/service-orders/${encodeURIComponent(o.id)}/pdf" target="_blank" rel="noopener">Visualizar PDF</a><a class="button-like secondary" href="/api/admin/service-orders/${encodeURIComponent(o.id)}/pdf?download=1">Descargar PDF</a><small>Actualizada ${o.updatedAt?new Date(o.updatedAt).toLocaleString('es-MX'):'—'}</small></div></div>
     <h4>Checklist de recepción</h4>${renderServiceChecklist(o)}
     ${o.photos?.length?`<section class="svc-section-card"><h5>Fotografías del equipo</h5><div class="service-photos">${o.photos.map(x=>`<a href="${esc(x)}" target="_blank" rel="noopener"><img src="${esc(x)}" alt="Equipo recibido"></a>`).join('')}</div></section>`:''}
     <section class="svc-section-card"><h5>Firmas y conformidad</h5><div class="svc-signatures">${signatureCard('Recepción / aceptación',sig.reception)}${signatureCard('Autorización',sig.authorization)}${signatureCard('Entrega',sig.delivery)}</div></section>

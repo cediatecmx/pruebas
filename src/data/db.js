@@ -62,6 +62,7 @@ async function init() {
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number TEXT;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipped_at TIMESTAMPTZ;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_photos JSONB NOT NULL DEFAULT '[]'::jsonb;
     CREATE TABLE IF NOT EXISTS oauth_tokens (
       provider TEXT PRIMARY KEY,
       encrypted_payload TEXT NOT NULL,
