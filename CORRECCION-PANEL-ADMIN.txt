@@ -1,0 +1,16 @@
+Corrección aplicada al ZIP desplegado:
+
+El panel quedaba vacío porque public/js/admin.js usaba data.user sin haber creado
+la variable data al recuperar /api/admin/session.
+
+Se corrigió para:
+1. esperar la respuesta,
+2. leer res.json(),
+3. obtener data.user,
+4. aplicar el rol,
+5. cargar los módulos correspondientes.
+
+IMPORTANTE:
+Este ZIP corresponde al proyecto que el usuario subió. Ese proyecto contiene
+Servicio Técnico + Usuarios, pero NO contiene todavía la implementación de
+firma remota por enlace descrita posteriormente.

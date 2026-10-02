@@ -208,7 +208,20 @@ async function loadOrders() {
   container.querySelectorAll('button[data-action="mark-manual"]').forEach((btn) => btn.addEventListener('click', async () => { const supplierOrderId = prompt('Número de pedido / folio que te dio el mayorista (opcional):') || ''; await api(`/api/admin/orders/${encodeURIComponent(btn.dataset.order)}/mark-manual`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source: btn.dataset.source, supplierOrderId }) }); loadOrders(); }));
 }
 
-api('/api/admin/session').then((res) => { if (res.ok) { showAdmin(); applyRole(data.user); loadForRole(data.user); } else showLogin(); });
+api('/api/admin/session').then(async (res) => {
+  if (!res.ok) {
+    showLogin();
+    return;
+  }
+
+  const data = await res.json().catch(() => ({}));
+  showAdmin();
+  applyRole(data.user);
+  loadForRole(data.user);
+}).catch((err) => {
+  console.error('No se pudo comprobar la sesión administrativa:', err);
+  showLogin();
+});
 
 // ---------- Solicitudes de distribuidor ----------
 const distStatusLabels = { pending: 'Pendiente', approved: 'Aprobado', rejected: 'Rechazado' };
