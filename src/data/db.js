@@ -154,6 +154,19 @@ async function init() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS service_events_order_idx ON service_order_events(order_id, created_at DESC);
+    CREATE TABLE IF NOT EXISTS service_signature_links (
+      id BIGSERIAL PRIMARY KEY,
+      order_id TEXT NOT NULL REFERENCES service_orders(id) ON DELETE CASCADE,
+      signature_type TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      created_by TEXT,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
+      revoked_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS service_signature_links_order_idx ON service_signature_links(order_id, created_at DESC);
+
   `);
   console.log('[db] PostgreSQL listo.');
 }

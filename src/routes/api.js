@@ -8,6 +8,7 @@ const productsStore = require('../data/productsStore');
 const marketingStore = require('../data/marketingStore');
 const adminUsersStore = require('../data/adminUsersStore');
 const serviceOrdersStore = require('../data/serviceOrdersStore');
+const serviceSignatureLinksStore = require('../data/serviceSignatureLinksStore');
 const fulfillmentService = require('../services/fulfillmentService');
 const inventoryService = require('../services/inventoryService');
 const mercadopago = require('../connectors/mercadopago');
@@ -90,8 +91,51 @@ router.put('/admin/users/:id', auth.requireAdmin, auth.requireRole('admin'), aut
 const serviceRoles=auth.requireRole('admin','reception','technician');
 router.get('/admin/service-orders', auth.requireAdmin, serviceRoles, async(req,res,next)=>{try{res.json(await serviceOrdersStore.list());}catch(e){next(e);}});
 router.get('/admin/service-orders/:id', auth.requireAdmin, serviceRoles, async(req,res,next)=>{try{const o=await serviceOrdersStore.find(req.params.id);if(!o)return res.status(404).json({error:'Orden no encontrada'});res.json({...o,events:await serviceOrdersStore.events(o.id)});}catch(e){next(e);}});
-router.post('/admin/service-orders', auth.requireAdmin, auth.requireRole('admin','reception'), auth.requireSameOrigin, async(req,res,next)=>{try{const b=req.body||{};if(!b.customer?.name||!b.customer?.phone||!b.equipment?.type||!b.equipment?.brandModel||!b.intake?.reportedFault)return res.status(400).json({error:'Cliente, teléfono, tipo/equipo y falla reportada son obligatorios.'});if(!b.signatures?.reception)return res.status(400).json({error:'Se requiere la firma de recepción/aceptación del cliente.'});res.status(201).json(await serviceOrdersStore.create(b,req.adminUser));}catch(e){next(e);}});
+router.post('/admin/service-orders', auth.requireAdmin, auth.requireRole('admin','reception'), auth.requireSameOrigin, async(req,res,next)=>{try{const b=req.body||{};if(!b.customer?.name||!b.customer?.phone||!b.equipment?.type||!b.equipment?.brandModel||!b.intake?.reportedFault)return res.status(400).json({error:'Cliente, teléfono, tipo/equipo y falla reportada son obligatorios.'});res.status(201).json(await serviceOrdersStore.create(b,req.adminUser));}catch(e){next(e);}});
 router.put('/admin/service-orders/:id', auth.requireAdmin, serviceRoles, auth.requireSameOrigin, async(req,res,next)=>{try{const b=req.body||{};if(req.adminUser.role==='reception'){const allowed=['status','delivery','signatures','photos'];for(const k of Object.keys(b))if(!allowed.includes(k))return res.status(403).json({error:'Recepción no puede modificar diagnóstico o reparación.'});}const o=await serviceOrdersStore.patch(req.params.id,b,req.adminUser);if(!o)return res.status(404).json({error:'Orden no encontrada'});res.json(o);}catch(e){next(e);}});
+
+
+// ---------- Firma remota de órdenes de servicio ----------
+router.post('/admin/service-orders/:id/signature-link', auth.requireAdmin, serviceRoles, auth.requireSameOrigin, async(req,res,next)=>{
+  try{
+    const order=await serviceOrdersStore.find(req.params.id);
+    if(!order)return res.status(404).json({error:'Orden no encontrada'});
+    const type=String(req.body?.type||'');
+    if(!serviceSignatureLinksStore.VALID_TYPES.has(type))return res.status(400).json({error:'Tipo de firma inválido.'});
+    const created=await serviceSignatureLinksStore.create(order.id,type,req.adminUser,168);
+    await serviceOrdersStore.event(order.id,req.adminUser,'link_firma_generado',{type,expiresAt:created.expiresAt});
+    res.status(201).json({url:`${config.publicOrigin}/firma-servicio.html?token=${encodeURIComponent(created.token)}`,expiresAt:created.expiresAt});
+  }catch(e){next(e);}
+});
+
+router.get('/service-signature/:token', async(req,res,next)=>{
+  try{
+    const link=await serviceSignatureLinksStore.findValid(req.params.token);
+    if(!link)return res.status(404).json({error:'Este enlace no existe, venció o ya fue utilizado.'});
+    const o=await serviceOrdersStore.find(link.order_id);
+    if(!o)return res.status(404).json({error:'Orden no encontrada.'});
+    const safe={id:o.id,createdAt:o.createdAt,status:o.status,customer:{name:o.customer?.name||''},equipment:o.equipment||{},physicalCheck:o.physicalCheck||{},functionCheck:o.functionCheck||{},accessories:o.accessories||{},intake:{reportedFault:o.intake?.reportedFault||'',techNotes:o.intake?.techNotes||'',backup:o.intake?.backup||'',initialBudget:o.intake?.initialBudget||0},diagnosis:o.diagnosis||{},repair:o.repair||{},delivery:o.delivery||{},photos:o.photos||[],signatureType:link.signature_type,expiresAt:link.expires_at};
+    res.json(safe);
+  }catch(e){next(e);}
+});
+
+router.post('/service-signature/:token', auth.requireSameOrigin, async(req,res,next)=>{
+  try{
+    const link=await serviceSignatureLinksStore.findValid(req.params.token);
+    if(!link)return res.status(410).json({error:'Este enlace venció o ya fue utilizado.'});
+    const o=await serviceOrdersStore.find(link.order_id);
+    if(!o)return res.status(404).json({error:'Orden no encontrada.'});
+    const dataUrl=String(req.body?.dataUrl||'');
+    if(!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(dataUrl)||dataUrl.length>900000)return res.status(400).json({error:'Firma inválida.'});
+    if(req.body?.accepted!==true)return res.status(400).json({error:'Debes confirmar que revisaste y aceptas la información.'});
+    const signatures={...(o.signatures||{})};
+    signatures[link.signature_type]={dataUrl,signedAt:new Date().toISOString(),signedBy:o.customer?.name||'Cliente',method:'remote'};
+    await serviceOrdersStore.patch(o.id,{signatures}, {id:null,name:'Cliente (firma remota)',role:'client'});
+    await serviceSignatureLinksStore.markUsed(link.id);
+    await serviceOrdersStore.event(o.id,{id:null,name:o.customer?.name||'Cliente'},'firma_remota',{type:link.signature_type});
+    res.json({ok:true,orderId:o.id,type:link.signature_type});
+  }catch(e){next(e);}
+});
 
 // ---------- Productos manuales CEDIA ----------
 function cleanText(v,max=500){ return String(v ?? '').trim().slice(0,max); }

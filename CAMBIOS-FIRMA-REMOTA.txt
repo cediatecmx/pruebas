@@ -1,0 +1,12 @@
+CEDIA / FixnByte — Firma remota y Admin v2
+
+- Panel admin con navegación rápida y estructura visual mejorada.
+- Las órdenes pueden levantarse con firma presencial o sin firma para enviarla a distancia.
+- En cada orden: Link recepción, Link autorización y Link entrega.
+- Enlace aleatorio de un solo uso, almacenado como hash, vigencia 7 días. Generar otro revoca el anterior del mismo tipo.
+- Página pública /firma-servicio.html: el cliente revisa orden, checklist/diagnóstico/entrega según etapa, acepta conformidad y firma.
+- Al firmar, el enlace queda utilizado y la firma se registra en la orden y bitácora.
+- Pantalla final de agradecimiento.
+- Botón para copiar y botón de WhatsApp en el Admin.
+- La tabla service_signature_links se crea automáticamente al arrancar Railway.
+- No requiere variables nuevas.
