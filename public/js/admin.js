@@ -371,7 +371,22 @@ async function openServiceOrder(id){
     <section class="svc-section-card"><h5>Bitácora</h5><div class="svc-timeline">${(o.events||[]).map(e=>`<div><span></span><p><strong>${esc(e.userName)}</strong> · ${esc(String(e.eventType||'').replaceAll('_',' '))}<small>${new Date(e.createdAt).toLocaleString('es-MX')}</small></p></div>`).join('')||'<p class="hint">Sin movimientos registrados.</p>'}</div></section>
   </div>`;
   const pad=box.querySelector('.svc-pad');setupPad(pad);
-  box.querySelectorAll('.svc-view-sign').forEach(btn=>btn.onclick=()=>{const src=btn.dataset.signature;if(!src)return;const w=window.open('','_blank','noopener,noreferrer');if(w){w.document.write(`<title>Firma ${o.id}</title><body style="font-family:system-ui;padding:30px;background:#f5f7fb"><h2>Firma · ${o.id}</h2><div style="background:white;border:1px solid #ddd;border-radius:14px;padding:24px;max-width:850px"><img src="${src}" style="display:block;width:100%;max-width:760px;height:auto"></div></body>`);w.document.close();}});
+  box.querySelectorAll('.svc-view-sign').forEach(btn=>btn.onclick=()=>{
+    const src=btn.dataset.signature;
+    if(!src){ alert('No hay una firma registrada.'); return; }
+    const modal=document.createElement('div');
+    modal.className='svc-sign-modal';
+    modal.innerHTML=`<div class="svc-sign-modal__dialog" role="dialog" aria-modal="true" aria-label="Firma ${esc(o.id)}">
+      <div class="svc-sign-modal__head"><div><strong>Firma del cliente</strong><small>Orden ${esc(o.id)}</small></div><button type="button" class="svc-sign-modal__close" aria-label="Cerrar">×</button></div>
+      <div class="svc-sign-modal__image"><img src="${src}" alt="Firma del cliente de la orden ${esc(o.id)}"></div>
+      <div class="svc-sign-modal__actions"><button type="button" class="secondary svc-sign-modal__done">Cerrar</button></div>
+    </div>`;
+    document.body.appendChild(modal);
+    const close=()=>modal.remove();
+    modal.querySelector('.svc-sign-modal__close').onclick=close;
+    modal.querySelector('.svc-sign-modal__done').onclick=close;
+    modal.addEventListener('click',e=>{if(e.target===modal)close();});
+  });
   box.querySelectorAll('.svc-link').forEach(btn=>btn.onclick=async()=>{const result=box.querySelector('.svc-link-result');result.innerHTML='Generando enlace…';const rr=await api(`/api/admin/service-orders/${encodeURIComponent(id)}/signature-link`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:btn.dataset.type})});const d=await rr.json().catch(()=>({}));if(!rr.ok){result.textContent=d.error||'No se pudo generar el enlace.';return;}result.innerHTML=`<div class="signature-link-card"><input readonly value="${esc(d.url)}"><button type="button" class="copy-sign-link">Copiar</button><a class="button-like secondary" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent('Hola, te compartimos la orden '+o.id+' para que la revises y, si estás conforme, la firmes: '+d.url)}">WhatsApp</a><small>Vence: ${new Date(d.expiresAt).toLocaleString('es-MX')}</small></div>`;result.querySelector('.copy-sign-link').onclick=async()=>{await navigator.clipboard.writeText(d.url);result.querySelector('.copy-sign-link').textContent='Copiado ✓';};});
   box.querySelector('.svc-save').onclick=async()=>{const status=box.querySelector('.svc-status').value;const body={status,delivery:{notes:box.querySelector('.svc-delivery').value},signatures:{...(o.signatures||{})}};if(canTech){body.diagnosis={text:box.querySelector('.svc-diagnosis').value};body.repair={text:box.querySelector('.svc-repair').value};}if(pad.dataset.signed==='1'){const key=(status==='listo_entrega'||status==='entregado')?'delivery':'authorization';body.signatures[key]={dataUrl:pad.toDataURL('image/png'),signedAt:new Date().toISOString(),signedBy:o.customer?.name||'Cliente',method:'presential'};}const rr=await api(`/api/admin/service-orders/${encodeURIComponent(id)}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(rr.ok)loadServiceOrders();else alert((await rr.json()).error||'No se pudo guardar');};
 }
