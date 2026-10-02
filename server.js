@@ -18,7 +18,7 @@ app.use((req, res, next) => {
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   next();
 });
-app.use(express.json({ limit: '100kb' }));
+app.use(express.json({ limit: '1mb' }));
 app.use((req, res, next) => {
   req.cookies = {};
   const raw = req.headers.cookie || '';

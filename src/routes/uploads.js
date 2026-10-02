@@ -17,7 +17,7 @@ function detectImage(buffer) {
 
 router.post('/admin/uploads/:kind', auth.requireAdmin, auth.requireSameOrigin, rawImage, async (req,res,next) => {
   try {
-    const folder = req.params.kind === 'banner' ? 'banners' : req.params.kind === 'product' ? 'products' : null;
+    const folder = req.params.kind === 'banner' ? 'banners' : req.params.kind === 'product' ? 'products' : req.params.kind === 'service' ? 'service' : null;
     if (!folder) return res.status(404).json({error:'Tipo de carga inválido.'});
     const ext = detectImage(req.body);
     if (!ext) return res.status(400).json({error:'Solo se permiten imágenes JPG, PNG o WebP.'});

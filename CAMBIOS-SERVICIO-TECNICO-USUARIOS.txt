@@ -1,0 +1,9 @@
+CEDIA / FixnByte — Servicio técnico + usuarios
+
+- Roles: Administrador, Recepción y Técnico.
+- La cuenta principal actual sigue funcionando dejando Usuario vacío.
+- Recepción solo ve Servicio Técnico; permisos validados también en backend.
+- Folio automático FNB-AAAA-00001.
+- Checklist basado en PROTOCOLO FNB, fotos, firmas de recepción/autorización/entrega y bitácora.
+- PostgreSQL crea admin_users, service_orders y service_order_events automáticamente.
+- Mantén las variables actuales y UPLOAD_DIR/Volume si ya los configuraste.

@@ -6,6 +6,8 @@ const ordersStore = require('../data/ordersStore');
 const distributorsStore = require('../data/distributorsStore');
 const productsStore = require('../data/productsStore');
 const marketingStore = require('../data/marketingStore');
+const adminUsersStore = require('../data/adminUsersStore');
+const serviceOrdersStore = require('../data/serviceOrdersStore');
 const fulfillmentService = require('../services/fulfillmentService');
 const inventoryService = require('../services/inventoryService');
 const mercadopago = require('../connectors/mercadopago');
@@ -39,25 +41,19 @@ function rateLimit(map, max) {
   };
 }
 
-router.post('/admin/login', rateLimitLogin, (req, res) => {
-  if (!config.adminPasswordHash || !config.sessionSecret) {
-    return res.status(503).json({ error: 'El acceso de administrador no está configurado.' });
-  }
-  const password = String(req.body?.password || '');
-  if (!auth.verifyPassword(password, config.adminPasswordHash)) {
-    return res.status(401).json({ error: 'Contraseña incorrecta.' });
-  }
-  loginAttempts.delete(req.ip || 'unknown');
-  auth.setSessionCookie(res, auth.createSession());
-  res.json({ ok: true });
+router.post('/admin/login', rateLimitLogin, async (req, res, next) => {
+  try {
+    if (!config.sessionSecret) return res.status(503).json({ error: 'SESSION_SECRET no está configurado.' });
+    const username=String(req.body?.username||'').trim(); const password=String(req.body?.password||'');
+    let user=null;
+    if(username){const dbUser=await adminUsersStore.findByUsername(username);if(dbUser&&dbUser.active&&auth.verifyPassword(password,dbUser.password_hash))user={id:dbUser.id,name:dbUser.name,role:dbUser.role};}
+    else if(config.adminPasswordHash&&auth.verifyPassword(password,config.adminPasswordHash)){user={id:'owner',name:'Administrador principal',role:'admin'};}
+    if(!user)return res.status(401).json({error:'Usuario o contraseña incorrectos.'});
+    loginAttempts.delete(req.ip||'unknown'); auth.setSessionCookie(res,auth.createSession(user)); res.json({ok:true,user});
+  } catch(e){next(e);}
 });
-
-router.post('/admin/logout', auth.requireAdmin, auth.requireSameOrigin, (req, res) => {
-  auth.clearSessionCookie(res);
-  res.json({ ok: true });
-});
-
-router.get('/admin/session', auth.requireAdmin, (req, res) => res.json({ authenticated: true }));
+router.post('/admin/logout', auth.requireAdmin, auth.requireSameOrigin, (req,res)=>{auth.clearSessionCookie(res);res.json({ok:true});});
+router.get('/admin/session', auth.requireAdmin, (req,res)=>res.json({authenticated:true,user:req.adminUser}));
 
 router.get('/products', attachDistributorFlag, async (req, res, next) => {
   try {
@@ -84,6 +80,18 @@ router.get('/status', (req, res) => {
   });
 });
 
+
+// ---------- Usuarios del panel ----------
+router.get('/admin/users', auth.requireAdmin, auth.requireRole('admin'), async(req,res,next)=>{try{res.json(await adminUsersStore.list());}catch(e){next(e);}});
+router.post('/admin/users', auth.requireAdmin, auth.requireRole('admin'), auth.requireSameOrigin, async(req,res,next)=>{try{res.status(201).json(await adminUsersStore.create(req.body||{}));}catch(e){res.status(400).json({error:e.message});}});
+router.put('/admin/users/:id', auth.requireAdmin, auth.requireRole('admin'), auth.requireSameOrigin, async(req,res,next)=>{try{const u=await adminUsersStore.update(req.params.id,req.body||{});if(!u)return res.status(404).json({error:'Usuario no encontrado'});res.json(u);}catch(e){res.status(400).json({error:e.message});}});
+
+// ---------- Servicio técnico privado ----------
+const serviceRoles=auth.requireRole('admin','reception','technician');
+router.get('/admin/service-orders', auth.requireAdmin, serviceRoles, async(req,res,next)=>{try{res.json(await serviceOrdersStore.list());}catch(e){next(e);}});
+router.get('/admin/service-orders/:id', auth.requireAdmin, serviceRoles, async(req,res,next)=>{try{const o=await serviceOrdersStore.find(req.params.id);if(!o)return res.status(404).json({error:'Orden no encontrada'});res.json({...o,events:await serviceOrdersStore.events(o.id)});}catch(e){next(e);}});
+router.post('/admin/service-orders', auth.requireAdmin, auth.requireRole('admin','reception'), auth.requireSameOrigin, async(req,res,next)=>{try{const b=req.body||{};if(!b.customer?.name||!b.customer?.phone||!b.equipment?.type||!b.equipment?.brandModel||!b.intake?.reportedFault)return res.status(400).json({error:'Cliente, teléfono, tipo/equipo y falla reportada son obligatorios.'});if(!b.signatures?.reception)return res.status(400).json({error:'Se requiere la firma de recepción/aceptación del cliente.'});res.status(201).json(await serviceOrdersStore.create(b,req.adminUser));}catch(e){next(e);}});
+router.put('/admin/service-orders/:id', auth.requireAdmin, serviceRoles, auth.requireSameOrigin, async(req,res,next)=>{try{const b=req.body||{};if(req.adminUser.role==='reception'){const allowed=['status','delivery','signatures','photos'];for(const k of Object.keys(b))if(!allowed.includes(k))return res.status(403).json({error:'Recepción no puede modificar diagnóstico o reparación.'});}const o=await serviceOrdersStore.patch(req.params.id,b,req.adminUser);if(!o)return res.status(404).json({error:'Orden no encontrada'});res.json(o);}catch(e){next(e);}});
 
 // ---------- Productos manuales CEDIA ----------
 function cleanText(v,max=500){ return String(v ?? '').trim().slice(0,max); }

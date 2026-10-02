@@ -112,6 +112,48 @@ async function init() {
     CREATE INDEX IF NOT EXISTS inventory_movements_order_idx ON inventory_movements(order_id);
     CREATE UNIQUE INDEX IF NOT EXISTS inventory_sale_once_idx ON inventory_movements(order_id, product_id, movement_type)
       WHERE order_id IS NOT NULL AND movement_type IN ('sale','restock');
+    CREATE TABLE IF NOT EXISTS admin_users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'reception',
+      active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS admin_users_username_idx ON admin_users(username);
+    CREATE TABLE IF NOT EXISTS service_orders (
+      id TEXT PRIMARY KEY,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_by TEXT,
+      assigned_technician TEXT,
+      status TEXT NOT NULL DEFAULT 'recibido',
+      customer JSONB NOT NULL DEFAULT '{}'::jsonb,
+      equipment JSONB NOT NULL DEFAULT '{}'::jsonb,
+      physical_check JSONB NOT NULL DEFAULT '{}'::jsonb,
+      function_check JSONB NOT NULL DEFAULT '{}'::jsonb,
+      accessories JSONB NOT NULL DEFAULT '{}'::jsonb,
+      intake JSONB NOT NULL DEFAULT '{}'::jsonb,
+      terms JSONB NOT NULL DEFAULT '{}'::jsonb,
+      diagnosis JSONB NOT NULL DEFAULT '{}'::jsonb,
+      repair JSONB NOT NULL DEFAULT '{}'::jsonb,
+      delivery JSONB NOT NULL DEFAULT '{}'::jsonb,
+      photos JSONB NOT NULL DEFAULT '[]'::jsonb,
+      signatures JSONB NOT NULL DEFAULT '{}'::jsonb
+    );
+    CREATE INDEX IF NOT EXISTS service_orders_status_idx ON service_orders(status, created_at DESC);
+    CREATE TABLE IF NOT EXISTS service_order_events (
+      id BIGSERIAL PRIMARY KEY,
+      order_id TEXT NOT NULL REFERENCES service_orders(id) ON DELETE CASCADE,
+      user_id TEXT,
+      user_name TEXT,
+      event_type TEXT NOT NULL,
+      detail JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS service_events_order_idx ON service_order_events(order_id, created_at DESC);
   `);
   console.log('[db] PostgreSQL listo.');
 }

@@ -40,20 +40,23 @@ function hashPassword(password) {
   return `scrypt$${N}$${r}$${p}$${salt.toString('base64url')}$${hash.toString('base64url')}`;
 }
 
-function createSession() {
-  const payload = `${Date.now() + SESSION_TTL_MS}.${crypto.randomBytes(16).toString('hex')}`;
+function createSession(user = { id: 'owner', name: 'Administrador principal', role: 'admin' }) {
+  const identity = base64url(JSON.stringify({ id:user.id||'owner', name:user.name||'Administrador', role:user.role||'admin' }));
+  const payload = `${Date.now() + SESSION_TTL_MS}.${identity}.${crypto.randomBytes(16).toString('hex')}`;
   return `${base64url(payload)}.${sign(payload)}`;
 }
 
 function verifySession(token) {
-  if (!token) return false;
+  if (!token) return null;
   const [encoded, signature] = token.split('.');
-  if (!encoded || !signature) return false;
+  if (!encoded || !signature) return null;
   let payload;
-  try { payload = Buffer.from(encoded, 'base64url').toString('utf8'); } catch { return false; }
-  if (!timingSafeEqualText(sign(payload), signature)) return false;
-  const [expires] = payload.split('.');
-  return Number(expires) > Date.now();
+  try { payload = Buffer.from(encoded, 'base64url').toString('utf8'); } catch { return null; }
+  if (!timingSafeEqualText(sign(payload), signature)) return null;
+  const parts = payload.split('.'); const expires=parts[0];
+  if(Number(expires)<=Date.now()) return null;
+  if(parts.length < 3) return {id:'owner',name:'Administrador principal',role:'admin'};
+  try { return JSON.parse(Buffer.from(parts[1],'base64url').toString('utf8')); } catch { return {id:'owner',name:'Administrador principal',role:'admin'}; }
 }
 
 function setSessionCookie(res, token) {
@@ -71,12 +74,8 @@ function clearSessionCookie(res) {
   res.clearCookie(COOKIE_NAME, { httpOnly: true, secure: config.isProduction, sameSite: 'lax', path: '/' });
 }
 
-function requireAdmin(req, res, next) {
-  if (!verifySession(req.cookies?.[COOKIE_NAME])) {
-    return res.status(401).json({ error: 'Sesión de administrador inválida o expirada' });
-  }
-  next();
-}
+function requireAdmin(req,res,next){const user=verifySession(req.cookies?.[COOKIE_NAME]);if(!user)return res.status(401).json({error:'Sesión inválida o expirada'});req.adminUser=user;next();}
+function requireRole(...roles){return (req,res,next)=>{if(!req.adminUser)return requireAdmin(req,res,()=>requireRole(...roles)(req,res,next));if(!roles.includes(req.adminUser.role))return res.status(403).json({error:'No tienes permiso para esta acción.'});next();};}
 
 // ---------- Sesiones de distribuidor (separadas de las de admin) ----------
 // A diferencia del admin (una sola cuenta fija), un distribuidor tiene
@@ -132,6 +131,7 @@ module.exports = {
   setSessionCookie,
   clearSessionCookie,
   requireAdmin,
+  requireRole,
   requireSameOrigin,
   DIST_COOKIE_NAME,
   createDistributorSession,
